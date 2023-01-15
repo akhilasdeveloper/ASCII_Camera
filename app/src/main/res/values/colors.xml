@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#C59B6D</color>
+    <color name="purple_500">#A3805A</color>
+    <color name="purple_700">#755C41</color>
+    <color name="teal_200">#5A8EA3</color>
+    <color name="teal_700">#466E7E</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <color name="grid_bg_color">#eee</color>
+    <color name="line_color">#333</color>
+    <color name="cell_color">#000</color>
+
+    <color name="messageColor">#88333333</color>
+    <color name="cardColor">#E6E6E6</color>
+
+    <color name="first">#FFFFFF</color>
+    <color name="second">#F3F3F3</color>
+    <color name="appbar">#FFFFFF</color>
+    <color name="appbar_inv">#222222</color>
+    <color name="third">#E3E3E3</color>
+    <color name="system_border">#E4FFFFFF</color>
+    <color name="system_border_inv">#CB616161</color>
+    <color name="system_for">#404040</color>
+    <color name="system_for_low">#606060</color>
+    <color name="system_for_light">#E1E1E1</color>
+    <color name="accent">#A3805A</color>
+    <color name="rippleColor">#ABA3805A</color>
+    <color name="light_for">#E1E1E1</color>
+    <color name="date">#333333</color>
+    <color name="splashbg">#222222</color>
+    <color name="system_status_bar_background">#CBFFFFFF</color>
+    <color name="system_navigation_bar_background">#CBFFFFFF</color>
+</resources>
