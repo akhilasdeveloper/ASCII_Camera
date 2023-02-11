@@ -36,8 +36,8 @@ class TextCanvasView(
     }
 
     private val emptyColor =
-        ResourcesCompat.getColor(context.resources, R.color.system_border, null)
-    private val blockColor = ResourcesCompat.getColor(context.resources, R.color.system_for, null)
+        ResourcesCompat.getColor(context.resources, R.color.can_bg_color, null)
+    private val blockColor = ResourcesCompat.getColor(context.resources, R.color.can_fg_color, null)
 
     private var paint = Paint().apply {
         color = blockColor
@@ -47,6 +47,8 @@ class TextCanvasView(
     private var charWidth = 0
     private var charHeight = 0
     private var gap = 0
+    private var xStartVal = 0f
+    private var yStartVal = 0f
 
     private val drawList = arrayListOf<ArrayList<Char>>()
 
@@ -56,7 +58,13 @@ class TextCanvasView(
         charWidth = list[0].size
         charHeight = list.size
         gap = 15
+        calculateStartVal()
         postInvalidate()
+    }
+
+    private fun calculateStartVal() {
+        xStartVal = (width - (charWidth * gap)) / 2f
+        yStartVal = (height - (charHeight * gap)) / 2f
     }
 
     override fun onDraw(canvas: Canvas?) {
@@ -64,14 +72,14 @@ class TextCanvasView(
 
             setBackgroundColor(emptyColor)
 
-            var xVal = 0f
-            var yVal = 0f
+            var xVal = xStartVal
+            var yVal = yStartVal
             for (y in 0 until charHeight) {
                 for (x in 0 until charWidth) {
                     drawText(drawList[y][x].toString(), xVal, yVal, paint)
                     xVal += gap
                 }
-                xVal = 0f
+                xVal = xStartVal
                 yVal += gap
             }
 

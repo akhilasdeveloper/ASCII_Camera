@@ -8,27 +8,6 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <color name="grid_bg_color">#333</color>
-    <color name="line_color">#eee</color>
-    <color name="cell_color">#fff</color>
-
-    <color name="messageColor">#88FFFFFF</color>
-    <color name="cardColor">#1E1E1E</color>
-
-    <color name="first">#222222</color>
-    <color name="second">#292929</color>
-    <color name="appbar">#222222</color>
-    <color name="appbar_inv">#FFFFFF</color>
-    <color name="third">#2B2B2B</color>
-    <color name="system_border">#E4222222</color>
-    <color name="system_border_inv">#C9D8D8D8</color>
-    <color name="system_for">#D1D1D1</color>
-    <color name="system_for_low">#B8B8B8</color>
-    <color name="system_for_light">#616161</color>
-    <color name="accent">#A3805A</color>
-    <color name="light_for">#E1E1E1</color>
-    <color name="date">#bbbbbb</color>
-    <color name="splashbg">#222222</color>
-    <color name="system_status_bar_background">#BE222222</color>
-    <color name="system_navigation_bar_background">#BE222222</color>
+    <color name="can_bg_color">#000000</color>
+    <color name="can_fg_color">#ffffff</color>
 </resources>

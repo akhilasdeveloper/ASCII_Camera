@@ -7,11 +7,13 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Matrix
-import androidx.appcompat.app.AppCompatActivity
+import android.hardware.camera2.CameraCharacteristics
 import android.os.Bundle
 import android.util.Size
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -27,6 +29,7 @@ import timber.log.Timber
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
 import kotlin.math.sqrt
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -107,7 +110,7 @@ class MainActivity : AppCompatActivity() {
                     CoroutineScope(Dispatchers.Main).launch {
                         imageProxy.toBitmap()?.let { bitmap: Bitmap ->
                             binding.imageView.setImageBitmap(bitmap)
-                            
+
                             val drawListY = arrayListOf<ArrayList<Char>>()
 
                             for (y in 0 until bitmap.height) {
@@ -118,7 +121,8 @@ class MainActivity : AppCompatActivity() {
                                     val brightness = pixel.brightness()
 
                                     val densityLength = density.length
-                                    val charIndex = map(brightness.toInt(),0,255,0,densityLength)
+                                    val charIndex =
+                                        map(brightness.toInt(), 0, 255, 0, densityLength)
                                     drawListX.add(density[densityLength - charIndex - 1])
                                 }
                                 drawListY.add(drawListX)
@@ -139,9 +143,10 @@ class MainActivity : AppCompatActivity() {
                 cameraProvider.unbindAll()
 
                 // Bind use cases to camera
-                cameraProvider.bindToLifecycle(
+                val cam = cameraProvider.bindToLifecycle(
                     this, cameraSelector, analysis
                 )
+
 
             } catch (exc: Exception) {
                 Timber.e("Use case binding failed $exc")
@@ -178,9 +183,12 @@ class MainActivity : AppCompatActivity() {
             height, Bitmap.Config.ARGB_8888
         )
         bitmap.copyPixelsFromBuffer(buffer)
-        return             Bitmap.createScaledBitmap(
-            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true),64,64
-            , false)
+        return Bitmap.createScaledBitmap(
+            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true),
+            64,
+            64,
+            false
+        )
     }
 
     private fun Int.brightness(): Double {
