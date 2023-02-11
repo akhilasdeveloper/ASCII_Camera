@@ -1,19 +1,20 @@
 package com.akhilasdeveloper.asciicamera
 
 import android.Manifest
+import android.app.Activity
 import android.app.AlertDialog
+import android.content.Context
 import android.content.DialogInterface
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Matrix
-import android.hardware.camera2.CameraCharacteristics
 import android.os.Bundle
 import android.util.Size
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -39,16 +40,7 @@ class MainActivity : AppCompatActivity() {
 
     private val density = "Ñ@#W$9876543210?!abc;:+=-,.      "
 
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            openCamera()
-            Toast.makeText(this, "Permission GRANTED", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(this, "Permission DENIED", Toast.LENGTH_SHORT).show()
-        }
-    }
+    private var cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,43 +48,42 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         init()
+        loadCamera()
+        setClickListeners()
+    }
 
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            openCamera()
-        } else {
-            requestStoragePermission();
+    private fun setClickListeners() {
+        binding.flipCameraButton.setOnClickListener {
+            toggleCamera()
+            loadCamera()
+        }
+    }
+
+    private fun toggleCamera() {
+        cameraSelector = if (cameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA)
+            CameraSelector.DEFAULT_FRONT_CAMERA
+        else
+            CameraSelector.DEFAULT_BACK_CAMERA
+    }
+
+    private fun loadCamera() {
+        checkPermission(Manifest.permission.CAMERA, this) {
+            if (it)
+                openCamera()
+            else
+                Toast.makeText(this, "Please allow camera permission", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun init() {
         textCanvasView = TextCanvasView(this)
         binding.gridViewHolder.addView(textCanvasView)
+
+        if (!hasFrontCamera())
+            binding.flipCameraButton.visibility = View.GONE
     }
 
-    private fun requestStoragePermission() {
-        if (ActivityCompat.shouldShowRequestPermissionRationale(
-                this,
-                Manifest.permission.CAMERA
-            )
-        ) {
-            AlertDialog.Builder(this)
-                .setTitle("Permission needed")
-                .setMessage("This permission is needed because of this and that")
-                .setPositiveButton("ok",
-                    DialogInterface.OnClickListener { dialog, which ->
-                        requestPermissionLauncher.launch(Manifest.permission.CAMERA)
-                    })
-                .setNegativeButton("cancel",
-                    DialogInterface.OnClickListener { dialog, which -> dialog.dismiss() })
-                .create().show()
-        } else {
-            requestPermissionLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
+
 
     private fun openCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
@@ -106,53 +97,51 @@ class MainActivity : AppCompatActivity() {
             // analysis
             val analysis = buildImageAnalysisUseCase().apply {
                 setAnalyzer(executor) { imageProxy ->
-
-                    CoroutineScope(Dispatchers.Main).launch {
-                        imageProxy.toBitmap()?.let { bitmap: Bitmap ->
-                            binding.imageView.setImageBitmap(bitmap)
-
-                            val drawListY = arrayListOf<ArrayList<Char>>()
-
-                            for (y in 0 until bitmap.height) {
-                                val drawListX = arrayListOf<Char>()
-
-                                for (x in 0 until bitmap.width) {
-                                    val pixel = bitmap[x, y]
-                                    val brightness = pixel.brightness()
-
-                                    val densityLength = density.length
-                                    val charIndex =
-                                        map(brightness.toInt(), 0, 255, 0, densityLength)
-                                    drawListX.add(density[densityLength - charIndex - 1])
-                                }
-                                drawListY.add(drawListX)
-                            }
-                            textCanvasView.draw(drawListY)
-                            imageProxy.close()
-                        }
-                    }
-
+                    generateTextView(imageProxy)
                 }
             }
-
-            // Select back camera as a default
-            val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 
             try {
                 // Unbind use cases before rebinding
                 cameraProvider.unbindAll()
 
                 // Bind use cases to camera
-                val cam = cameraProvider.bindToLifecycle(
+                cameraProvider.bindToLifecycle(
                     this, cameraSelector, analysis
                 )
-
 
             } catch (exc: Exception) {
                 Timber.e("Use case binding failed $exc")
             }
 
         }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun generateTextView(imageProxy: ImageProxy) {
+        CoroutineScope(Dispatchers.Main).launch {
+            imageProxy.toBitmap()?.let { bitmap: Bitmap ->
+                binding.imageView.setImageBitmap(bitmap)
+
+                val drawListY = arrayListOf<ArrayList<Char>>()
+
+                for (y in 0 until bitmap.height) {
+                    val drawListX = arrayListOf<Char>()
+
+                    for (x in 0 until bitmap.width) {
+                        val pixel = bitmap[x, y]
+                        val brightness = pixel.brightness()
+
+                        val densityLength = density.length
+                        val charIndex =
+                            map(brightness.toInt(), 0, 255, 0, densityLength)
+                        drawListX.add(density[densityLength - charIndex - 1])
+                    }
+                    drawListY.add(drawListX)
+                }
+                textCanvasView.draw(drawListY)
+                imageProxy.close()
+            }
+        }
     }
 
     private fun map(
@@ -210,4 +199,9 @@ class MainActivity : AppCompatActivity() {
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
     }
+
+    private fun hasFrontCamera(): Boolean = this.packageManager.hasSystemFeature(
+        PackageManager.FEATURE_CAMERA_FRONT
+    )
+
 }

@@ -9,14 +9,45 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:id="@+id/gridViewHolder"
-        android:orientation="vertical"/>
+        android:gravity="bottom"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/gridViewHolder"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical" />
+
+        <androidx.coordinatorlayout.widget.CoordinatorLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="20dp"
+            android:background="@color/menu_bg_color">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/capture_button"
+                android:layout_width="?android:attr/actionBarSize"
+                android:layout_height="?android:attr/actionBarSize"
+                android:layout_gravity="center"
+                android:background="@drawable/capture_button_state" />
+
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/flip_camera_button"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="start|center_vertical"
+                android:src="@drawable/baseline_flip_camera_android_24"
+                android:tint="@color/menu_fg_color"
+                android:background="@drawable/cam_flip_button_state"/>
+
+        </androidx.coordinatorlayout.widget.CoordinatorLayout>
+    </LinearLayout>
 
     <ImageView
+        android:id="@+id/imageView"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:id="@+id/imageView"
-        android:orientation="vertical"
-        android:layout_marginBottom="?android:attr/actionBarSize"/>
+        android:contentDescription="@string/image_preview" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
