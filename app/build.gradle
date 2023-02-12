@@ -47,11 +47,13 @@ dependencies {
 
     implementation 'com.jakewharton.timber:timber:4.7.1'
 
-    // CameraX core library using the camera2 implementation
     def camerax_version = "1.2.1"
-    // The following line is optional, as the core library is included indirectly by camera-camera2
+    def lifecycle_version = "2.5.1"
+
     implementation "androidx.camera:camera-core:${camerax_version}"
     implementation "androidx.camera:camera-lifecycle:${camerax_version}"
     implementation "androidx.camera:camera-view:${camerax_version}"
     implementation "androidx.camera:camera-extensions:${camerax_version}"
+
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:$lifecycle_version"
 }
