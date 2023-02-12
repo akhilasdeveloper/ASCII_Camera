@@ -115,7 +115,6 @@ class TextCanvasView(
 
     private fun filterPixelToChar(pixel: Int): CharData {
         val brightness = pixel.brightness()
-        val filter = filter.getFilter(pixel)
         val densityLength = filter.density.length
         val charIndex = map(brightness.toInt(), 0, 255, 0, densityLength)
         bgColor = filter.colorBg
