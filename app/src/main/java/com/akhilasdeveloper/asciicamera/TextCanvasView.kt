@@ -5,8 +5,7 @@ import android.graphics.*
 import android.util.AttributeSet
 import android.view.View
 import androidx.camera.core.ImageProxy
-import androidx.core.content.res.ResourcesCompat
-import androidx.core.graphics.get
+import androidx.core.graphics.*
 import timber.log.Timber
 import java.nio.ByteBuffer
 import kotlin.math.sqrt
@@ -39,10 +38,7 @@ class TextCanvasView(
 
     }
 
-    private val emptyColor =
-        ResourcesCompat.getColor(context.resources, R.color.can_bg_color, null)
-    private val blockColor = ResourcesCompat.getColor(context.resources, R.color.can_fg_color, null)
-    private val density = "Ñ@#W$9876543210?!abc;:+=-,.      "
+//    private val density = "@8Oo:."
 
     private var textCharSize = 15f
     private var xStartVal = 0f
@@ -51,15 +47,18 @@ class TextCanvasView(
     private var canvasHeight = 0f
     private var bitmapWidth = 0
     private var bitmapHeight = 0
+    var inverse = false
+    var rotateDegree: Float? = null
 
     private var paint = Paint().apply {
-        color = blockColor
         textSize = textCharSize
     }
 
-    private val drawList = arrayListOf<ArrayList<Char>>()
+    private val drawList = arrayListOf<ArrayList<CharData>>()
+    private var bgColor = Color.BLACK
+    var filter:TextBitmapFilter = TextBitmapFilter.BlackOnWhite()
 
-    private fun draw(list: ArrayList<ArrayList<Char>>) {
+    private fun draw(list: ArrayList<ArrayList<CharData>>) {
         drawList.clear()
         drawList.addAll(list)
         calculateStartVal()
@@ -88,26 +87,43 @@ class TextCanvasView(
         imageProxy.toBitmap()?.scaleDownToCanvas()?.let { bitmap: Bitmap ->
 
             toBitmap(bitmap)
-
-            val drawListY = arrayListOf<ArrayList<Char>>()
-
-            for (y in 0 until bitmap.height) {
-                val drawListX = arrayListOf<Char>()
-
-                for (x in 0 until bitmap.width) {
-                    val pixel = bitmap[x, y]
-                    val brightness = pixel.brightness()
-
-                    val densityLength = density.length
-                    val charIndex = map(brightness.toInt(), 0, 255, 0, densityLength)
-                    drawListX.add(density[densityLength - charIndex - 1])
-                }
-                drawListY.add(drawListX)
-            }
-            draw(drawListY)
+            draw(bitmapToText(bitmap))
             imageProxy.close()
         }
 
+    }
+
+    private fun bitmapToText(bitmap: Bitmap): ArrayList<ArrayList<CharData>> {
+
+        val drawListY = arrayListOf<ArrayList<CharData>>()
+
+        for (y in 0 until bitmap.height) {
+            val drawListX = arrayListOf<CharData>()
+
+            for (x in 0 until bitmap.width) {
+                val pixel = bitmap[x, y]
+
+                drawListX.add(
+                    filterPixelToChar(pixel)
+                )
+            }
+            drawListY.add(drawListX)
+        }
+
+        return drawListY
+    }
+
+    private fun filterPixelToChar(pixel: Int): CharData {
+        val brightness = pixel.brightness()
+        val filter = filter.getFilter(pixel)
+        val densityLength = filter.density.length
+        val charIndex = map(brightness.toInt(), 0, 255, 0, densityLength)
+        bgColor = filter.colorBg
+        return CharData(
+            char = filter.density[densityLength - charIndex - 1],
+            colorFg = filter.colorFg,
+            colorBg = filter.colorBg
+        )
     }
 
     private fun map(
@@ -131,8 +147,11 @@ class TextCanvasView(
         val rowPadding: Int = rowStride - pixelStride * width
 
         val matrix = Matrix()
-        matrix.preScale(-1f, 1f)
-        matrix.postRotate(90f)
+        if (inverse)
+            matrix.preScale(-1f, 1f)
+        rotateDegree?.let {
+            matrix.postRotate(it)
+        }
 
         val bitmap = Bitmap.createBitmap(
             width + rowPadding / pixelStride,
@@ -198,13 +217,16 @@ class TextCanvasView(
     override fun onDraw(canvas: Canvas?) {
         canvas?.apply {
 
-            setBackgroundColor(emptyColor)
+            setBackgroundColor(bgColor)
 
             var xVal = xStartVal
             var yVal = yStartVal
             for (y in 0 until drawList.size) {
                 for (x in 0 until drawList[0].size) {
-                    drawText(drawList[y][x].toString(), xVal, yVal, paint)
+                    drawList[y][x].let {
+                        paint.color = it.colorFg
+                        drawText(it.char.toString(), xVal, yVal, paint)
+                    }
                     xVal += textCharSize
                 }
                 xVal = xStartVal
@@ -213,6 +235,12 @@ class TextCanvasView(
 
         }
     }
+
+    data class CharData(
+        val char: Char,
+        val colorFg: Int,
+        val colorBg: Int
+    )
 
 }
 

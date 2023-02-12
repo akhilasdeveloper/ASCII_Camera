@@ -52,13 +52,29 @@ class MainActivity : AppCompatActivity() {
             toggleCamera()
             loadCamera()
         }
+        binding.filterButton.setOnClickListener {
+            when(textCanvasView.filter){
+                is TextBitmapFilter.WhiteOnBlack -> {
+                    textCanvasView.filter = TextBitmapFilter.BlackOnWhite()
+                }
+                is TextBitmapFilter.BlackOnWhite -> {
+                    textCanvasView.filter = TextBitmapFilter.OriginalColor()
+                }
+                is TextBitmapFilter.OriginalColor -> {
+                    textCanvasView.filter = TextBitmapFilter.WhiteOnBlack()
+                }
+            }
+        }
     }
 
     private fun toggleCamera() {
-        cameraSelector = if (cameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA)
+        cameraSelector = if (cameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA) {
+            textCanvasView.inverse = false
             CameraSelector.DEFAULT_BACK_CAMERA
-        else
+        }else {
+            textCanvasView.inverse = true
             CameraSelector.DEFAULT_FRONT_CAMERA
+        }
     }
 
     private fun loadCamera() {
@@ -74,13 +90,15 @@ class MainActivity : AppCompatActivity() {
     private fun init() {
         initPermission()
         cameraExecutor = Executors.newSingleThreadExecutor()
-        textCanvasView = TextCanvasView(this)
-        binding.gridViewHolder.addView(textCanvasView)
+        textCanvasView = binding.gridViewHolder
+        textCanvasView.rotateDegree = 90f
 
-        if (!hasFrontCamera())
+        if (!hasFrontCamera()) {
             binding.flipCameraButton.visibility = View.GONE
-        else
+        }else {
             cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+            textCanvasView.inverse = true
+        }
     }
 
 
