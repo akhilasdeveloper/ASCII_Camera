@@ -1,6 +1,5 @@
-package com.akhilasdeveloper.asciicamera
+package com.akhilasdeveloper.asciicamera.ui
 
-import android.Manifest
 import android.app.AlertDialog
 import android.content.pm.PackageManager
 import androidx.activity.result.ActivityResultLauncher

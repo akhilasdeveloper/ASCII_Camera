@@ -1,4 +1,4 @@
-package com.akhilasdeveloper.asciicamera
+package com.akhilasdeveloper.asciicamera.ui
 
 import android.content.Context
 import android.graphics.*
@@ -6,6 +6,7 @@ import android.util.AttributeSet
 import android.view.View
 import androidx.camera.core.ImageProxy
 import androidx.core.graphics.*
+import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import timber.log.Timber
 import java.nio.ByteBuffer
 import kotlin.math.sqrt
@@ -56,7 +57,7 @@ class TextCanvasView(
 
     private val drawList = arrayListOf<ArrayList<CharData>>()
     private var bgColor = Color.BLACK
-    var filter:TextBitmapFilter = TextBitmapFilter.BlackOnWhite()
+    var filter: TextBitmapFilter = TextBitmapFilter.BlackOnWhite
 
     private fun draw(list: ArrayList<ArrayList<CharData>>) {
         drawList.clear()
@@ -117,11 +118,11 @@ class TextCanvasView(
         val brightness = pixel.brightness()
         val densityLength = filter.density.length
         val charIndex = map(brightness.toInt(), 0, 255, 0, densityLength)
-        bgColor = filter.colorBg
+        bgColor = filter.bgColor(pixel)
         return CharData(
             char = filter.density[densityLength - charIndex - 1],
-            colorFg = filter.colorFg,
-            colorBg = filter.colorBg
+            colorFg = filter.fgColor(pixel),
+            colorBg = filter.bgColor(pixel)
         )
     }
 
@@ -242,5 +243,6 @@ class TextCanvasView(
     )
 
 }
+
 
 

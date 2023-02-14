@@ -1,12 +1,8 @@
-package com.akhilasdeveloper.asciicamera
+package com.akhilasdeveloper.asciicamera.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.Color
-import android.graphics.Matrix
 import android.os.Bundle
-import android.util.Size
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -15,17 +11,13 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.get
 import androidx.lifecycle.lifecycleScope
+import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import com.akhilasdeveloper.asciicamera.databinding.ActivityMainBinding
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.nio.ByteBuffer
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
-import kotlin.math.sqrt
 
 
 class MainActivity : AppCompatActivity() {
@@ -55,13 +47,13 @@ class MainActivity : AppCompatActivity() {
         binding.filterButton.setOnClickListener {
             when(textCanvasView.filter){
                 is TextBitmapFilter.WhiteOnBlack -> {
-                    textCanvasView.filter = TextBitmapFilter.BlackOnWhite()
+                    textCanvasView.filter = TextBitmapFilter.BlackOnWhite
                 }
                 is TextBitmapFilter.BlackOnWhite -> {
-                    textCanvasView.filter = TextBitmapFilter.OriginalColor()
+                    textCanvasView.filter = TextBitmapFilter.OriginalColor
                 }
                 is TextBitmapFilter.OriginalColor -> {
-                    textCanvasView.filter = TextBitmapFilter.WhiteOnBlack()
+                    textCanvasView.filter = TextBitmapFilter.WhiteOnBlack
                 }
             }
         }
