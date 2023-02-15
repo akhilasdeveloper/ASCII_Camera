@@ -5,11 +5,10 @@ import android.graphics.*
 import android.util.AttributeSet
 import android.view.View
 import androidx.camera.core.ImageProxy
-import androidx.core.graphics.*
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
+import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.CharData
 import timber.log.Timber
 import java.nio.ByteBuffer
-import kotlin.math.sqrt
 
 class TextCanvasView(
     context: Context,
@@ -39,8 +38,6 @@ class TextCanvasView(
 
     }
 
-//    private val density = "@8Oo:."
-
     private var textCharSize = 15f
     private var xStartVal = 0f
     private var yStartVal = 0f
@@ -63,6 +60,7 @@ class TextCanvasView(
         drawList.clear()
         drawList.addAll(list)
         calculateStartVal()
+        bgColor = list.first().first().colorBg
         postInvalidate()
     }
 
@@ -88,56 +86,12 @@ class TextCanvasView(
         imageProxy.toBitmap()?.scaleDownToCanvas()?.let { bitmap: Bitmap ->
 
             toBitmap(bitmap)
-            draw(bitmapToText(bitmap))
+            draw(filter.bitmapToText(bitmap))
             imageProxy.close()
         }
 
     }
 
-    private fun bitmapToText(bitmap: Bitmap): ArrayList<ArrayList<CharData>> {
-
-        val drawListY = arrayListOf<ArrayList<CharData>>()
-
-        for (y in 0 until bitmap.height) {
-            val drawListX = arrayListOf<CharData>()
-
-            for (x in 0 until bitmap.width) {
-                val pixel = bitmap[x, y]
-
-                drawListX.add(
-                    filterPixelToChar(pixel)
-                )
-            }
-            drawListY.add(drawListX)
-        }
-
-        return drawListY
-    }
-
-    private fun filterPixelToChar(pixel: Int): CharData {
-        val brightness = pixel.brightness()
-        val densityLength = filter.density.length
-        val charIndex = map(brightness.toInt(), 0, 255, 0, densityLength)
-        bgColor = filter.bgColor(pixel)
-        return CharData(
-            char = filter.density[densityLength - charIndex - 1],
-            colorFg = filter.fgColor(pixel),
-            colorBg = filter.bgColor(pixel)
-        )
-    }
-
-    private fun map(
-        value: Int,
-        startValue: Int,
-        endValue: Int,
-        mapStartValue: Int,
-        mapEndValue: Int
-    ): Int {
-        val n = endValue - startValue
-        val mapN = mapEndValue - mapStartValue
-        val factor = mapN.toFloat() / n.toFloat()
-        return ((startValue + value) * factor).toInt().coerceAtLeast(0).coerceAtMost(mapN - 1)
-    }
 
     private fun ImageProxy.toBitmap(): Bitmap? {
         val planes = planes
@@ -202,18 +156,6 @@ class TextCanvasView(
         )
     }
 
-    private fun Int.brightness(): Double {
-
-        val r = Color.red(this)
-        val g = Color.red(this)
-        val b = Color.red(this)
-
-        return sqrt(
-            r * r * .241 + g
-                    * g * .691 + b * b * .068
-        )
-    }
-
     override fun onDraw(canvas: Canvas?) {
         canvas?.apply {
 
@@ -235,12 +177,6 @@ class TextCanvasView(
 
         }
     }
-
-    data class CharData(
-        val char: Char,
-        val colorFg: Int,
-        val colorBg: Int
-    )
 
 }
 

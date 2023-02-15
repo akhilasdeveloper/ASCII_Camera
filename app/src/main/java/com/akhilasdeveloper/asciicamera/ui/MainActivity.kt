@@ -2,6 +2,7 @@ package com.akhilasdeveloper.asciicamera.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
@@ -14,6 +15,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import com.akhilasdeveloper.asciicamera.databinding.ActivityMainBinding
+import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.concurrent.Executor
@@ -53,6 +55,16 @@ class MainActivity : AppCompatActivity() {
                     textCanvasView.filter = TextBitmapFilter.OriginalColor
                 }
                 is TextBitmapFilter.OriginalColor -> {
+                    textCanvasView.filter = TextBitmapFilter.ANSI
+                }
+                is TextBitmapFilter.ANSI -> {
+                    textCanvasView.filter = TextBitmapFilter.Custom(filterSpecs = FilterSpecs(
+                        density = "AKHIL",
+                        fgColors = arrayListOf(Color.WHITE),
+                        colorBg = Color.BLACK
+                    ))
+                }
+                is TextBitmapFilter.Custom -> {
                     textCanvasView.filter = TextBitmapFilter.WhiteOnBlack
                 }
             }
