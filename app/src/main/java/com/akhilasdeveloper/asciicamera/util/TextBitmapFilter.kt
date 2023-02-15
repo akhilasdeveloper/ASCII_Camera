@@ -2,7 +2,6 @@ package com.akhilasdeveloper.asciicamera.util
 
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.text.style.LineHeightSpan.WithDensity
 import androidx.core.graphics.get
 import kotlin.math.sqrt
 

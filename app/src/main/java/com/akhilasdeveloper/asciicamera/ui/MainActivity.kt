@@ -12,16 +12,22 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import com.akhilasdeveloper.asciicamera.databinding.ActivityMainBinding
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
+import com.akhilasdeveloper.asciicamera.util.TextGraphicsSorter
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import javax.inject.Inject
 
-
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
     private var _binding: ActivityMainBinding? = null
@@ -30,6 +36,11 @@ class MainActivity : AppCompatActivity() {
 
     private var cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
     private lateinit var cameraExecutor: Executor
+
+    @Inject
+    lateinit var textGraphicsSorter: TextGraphicsSorter
+
+    val viewModel = ViewModelProvider(this@MainActivity)[MainViewModel::class.java]
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,7 +58,7 @@ class MainActivity : AppCompatActivity() {
             loadCamera()
         }
         binding.filterButton.setOnClickListener {
-            when(textCanvasView.filter){
+            when (textCanvasView.filter) {
                 is TextBitmapFilter.WhiteOnBlack -> {
                     textCanvasView.filter = TextBitmapFilter.BlackOnWhite
                 }
@@ -58,24 +69,36 @@ class MainActivity : AppCompatActivity() {
                     textCanvasView.filter = TextBitmapFilter.ANSI
                 }
                 is TextBitmapFilter.ANSI -> {
-                    textCanvasView.filter = TextBitmapFilter.Custom(filterSpecs = FilterSpecs(
-                        density = "AKHIL",
-                        fgColors = arrayListOf(Color.WHITE),
-                        colorBg = Color.BLACK
-                    ))
+                    CoroutineScope(Dispatchers.Default).launch {
+                        textCanvasView.filter = TextBitmapFilter.Custom(
+                            filterSpecs = FilterSpecs(
+                                density = textGraphicsSorter.sortTextByBrightness("!@#$%^&*()_+=-|}{[]\\\":;',.><?/~`"),
+                                fgColors = arrayListOf(Color.WHITE),
+                                colorBg = Color.BLACK
+                            )
+                        )
+                    }
                 }
                 is TextBitmapFilter.Custom -> {
                     textCanvasView.filter = TextBitmapFilter.WhiteOnBlack
                 }
             }
         }
+
+        binding.captureButton.setOnClickListener {
+
+        }
+
+        /*textGraphicsSorter.bitmapTest = {
+            binding.imageView.setImageBitmap(it)
+        }*/
     }
 
     private fun toggleCamera() {
         cameraSelector = if (cameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA) {
             textCanvasView.inverse = false
             CameraSelector.DEFAULT_BACK_CAMERA
-        }else {
+        } else {
             textCanvasView.inverse = true
             CameraSelector.DEFAULT_FRONT_CAMERA
         }
@@ -99,7 +122,7 @@ class MainActivity : AppCompatActivity() {
 
         if (!hasFrontCamera()) {
             binding.flipCameraButton.visibility = View.GONE
-        }else {
+        } else {
             cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
             textCanvasView.inverse = true
         }
@@ -132,7 +155,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun generateTextView(imageProxy: ImageProxy) {
         lifecycleScope.launch {
-            textCanvasView.generateTextView(imageProxy){
+            textCanvasView.generateTextView(imageProxy) {
                 binding.imageView.setImageBitmap(it)
             }
         }
