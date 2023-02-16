@@ -21,6 +21,8 @@ import com.akhilasdeveloper.asciicamera.util.TextGraphicsSorter
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.concurrent.Executor
@@ -33,14 +35,14 @@ class MainActivity : AppCompatActivity() {
     private var _binding: ActivityMainBinding? = null
     private val binding get() = _binding!!
     private lateinit var textCanvasView: TextCanvasView
-
-    private var cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
     private lateinit var cameraExecutor: Executor
+
+    private var cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
     @Inject
     lateinit var textGraphicsSorter: TextGraphicsSorter
 
-    val viewModel = ViewModelProvider(this@MainActivity)[MainViewModel::class.java]
+    lateinit var viewModel:MainViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,14 +50,26 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         init()
-        loadCamera()
         setClickListeners()
+        subscribeToObservers()
+    }
+
+    private fun subscribeToObservers() {
+        lifecycleScope.launchWhenStarted {
+            viewModel.lensState.collectLatest {
+                cameraSelector = it
+                loadCamera()
+            }
+
+            viewModel.inverseCanvasState.collectLatest {
+                textCanvasView.inverse = it
+            }
+        }
     }
 
     private fun setClickListeners() {
         binding.flipCameraButton.setOnClickListener {
-            toggleCamera()
-            loadCamera()
+            viewModel.toggleCamera()
         }
         binding.filterButton.setOnClickListener {
             when (textCanvasView.filter) {
@@ -94,16 +108,6 @@ class MainActivity : AppCompatActivity() {
         }*/
     }
 
-    private fun toggleCamera() {
-        cameraSelector = if (cameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA) {
-            textCanvasView.inverse = false
-            CameraSelector.DEFAULT_BACK_CAMERA
-        } else {
-            textCanvasView.inverse = true
-            CameraSelector.DEFAULT_FRONT_CAMERA
-        }
-    }
-
     private fun loadCamera() {
         checkPermission(Manifest.permission.CAMERA) {
 
@@ -116,6 +120,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun init() {
         initPermission()
+        viewModel = ViewModelProvider(this@MainActivity)[MainViewModel::class.java]
         cameraExecutor = Executors.newSingleThreadExecutor()
         textCanvasView = binding.gridViewHolder
         textCanvasView.rotateDegree = 90f
@@ -126,6 +131,7 @@ class MainActivity : AppCompatActivity() {
             cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
             textCanvasView.inverse = true
         }
+        viewModel.getLens()
     }
 
 
