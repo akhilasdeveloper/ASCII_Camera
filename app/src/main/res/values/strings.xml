@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">ASCII Camera</string>
     <string name="image_preview">Image Preview</string>
+    <string name="filter_item_image">Filter Item Image</string>
 </resources>

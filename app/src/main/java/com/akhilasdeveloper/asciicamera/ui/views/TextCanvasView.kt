@@ -1,14 +1,18 @@
-package com.akhilasdeveloper.asciicamera.ui
+package com.akhilasdeveloper.asciicamera.ui.views
 
 import android.content.Context
 import android.graphics.*
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.View
 import androidx.camera.core.ImageProxy
+import com.akhilasdeveloper.asciicamera.R
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.CharData
 import timber.log.Timber
 import java.nio.ByteBuffer
+
 
 class TextCanvasView(
     context: Context,
@@ -35,10 +39,22 @@ class TextCanvasView(
     }
 
     private fun init(set: AttributeSet?) {
+        set?.let { attrSet ->
 
+            val ta = context.obtainStyledAttributes(attrSet, R.styleable.TextCanvasView)
+
+            ta.getDrawable(
+                R.styleable.TextCanvasView_src)?.let {drawable->
+                drawableToBitmap(drawable)?.let {bitmap: Bitmap ->
+                    generateTextViewFromBitmap(bitmap)
+                }
+            }
+            ta.recycle()
+
+        }
     }
 
-    private var textCharSize = 15f
+    var textCharSize = 15f
     private var xStartVal = 0f
     private var yStartVal = 0f
     private var canvasWidth = 0f
@@ -82,7 +98,7 @@ class TextCanvasView(
         Timber.d("xStartVal:yStartVal ${(width - (bitmapWidth * textCharSize)) / 2f}:${(height - (bitmapHeight * textCharSize)) / 2f}")
     }
 
-    fun generateTextView(imageProxy: ImageProxy, toBitmap: (Bitmap) -> Unit) {
+    fun generateTextViewFromImageProxy(imageProxy: ImageProxy, toBitmap: (Bitmap) -> Unit) {
         imageProxy.toBitmap()?.scaleDownToCanvas()?.let { bitmap: Bitmap ->
 
             toBitmap(bitmap)
@@ -90,6 +106,13 @@ class TextCanvasView(
             imageProxy.close()
         }
 
+    }
+
+    fun generateTextViewFromBitmap(bitmap: Bitmap) {
+        /*bitmap.scaleDownToCanvas().let { bmp: Bitmap ->
+            draw(filter.bitmapToText(bmp))
+        }*/
+        draw(filter.bitmapToText(bitmap))
     }
 
 
@@ -176,6 +199,32 @@ class TextCanvasView(
             }
 
         }
+    }
+
+    fun drawableToBitmap(drawable: Drawable): Bitmap? {
+        var bitmap: Bitmap? = null
+        if (drawable is BitmapDrawable) {
+            if (drawable.bitmap != null) {
+                return drawable.bitmap
+            }
+        }
+        bitmap = if (drawable.intrinsicWidth <= 0 || drawable.intrinsicHeight <= 0) {
+            Bitmap.createBitmap(
+                1,
+                1,
+                Bitmap.Config.ARGB_8888
+            )
+        } else {
+            Bitmap.createBitmap(
+                drawable.intrinsicWidth,
+                drawable.intrinsicHeight,
+                Bitmap.Config.ARGB_8888
+            )
+        }
+        val canvas = Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        return bitmap
     }
 
 }

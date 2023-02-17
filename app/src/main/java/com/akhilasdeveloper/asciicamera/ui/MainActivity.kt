@@ -1,7 +1,11 @@
 package com.akhilasdeveloper.asciicamera.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
+import android.content.res.AssetManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
@@ -12,25 +16,33 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.akhilasdeveloper.asciicamera.databinding.ActivityMainBinding
+import com.akhilasdeveloper.asciicamera.ui.recyclerview.FiltersRecyclerAdapter
+import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerFiltersClickListener
+import com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
+import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
 import com.akhilasdeveloper.asciicamera.util.TextGraphicsSorter
+import com.akhilasdeveloper.asciicamera.util.observe
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.io.IOException
+import java.io.InputStream
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import javax.inject.Inject
 
+
 @AndroidEntryPoint
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
 
     private var _binding: ActivityMainBinding? = null
     private val binding get() = _binding!!
@@ -38,11 +50,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cameraExecutor: Executor
 
     private var cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    private lateinit var bottomSheetBehavior: BottomSheetBehavior<NestedScrollView>
 
     @Inject
     lateinit var textGraphicsSorter: TextGraphicsSorter
 
-    lateinit var viewModel:MainViewModel
+    lateinit var viewModel: MainViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,16 +68,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun subscribeToObservers() {
-        lifecycleScope.launchWhenStarted {
-            viewModel.lensState.collectLatest {
-                cameraSelector = it
-                loadCamera()
-            }
 
-            viewModel.inverseCanvasState.collectLatest {
-                textCanvasView.inverse = it
-            }
+        viewModel.lensState.observe(lifecycleScope) {
+            cameraSelector = it
+            loadCamera()
         }
+
+        viewModel.inverseCanvasState.observe(lifecycleScope) {
+            textCanvasView.inverse = it
+        }
+
     }
 
     private fun setClickListeners() {
@@ -100,12 +113,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.captureButton.setOnClickListener {
-
+            if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
+                bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+            else {
+                bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
+            }
         }
 
-        /*textGraphicsSorter.bitmapTest = {
-            binding.imageView.setImageBitmap(it)
-        }*/
     }
 
     private fun loadCamera() {
@@ -132,8 +146,45 @@ class MainActivity : AppCompatActivity() {
             textCanvasView.inverse = true
         }
         viewModel.getLens()
+
+        bottomSheetBehavior = BottomSheetBehavior.from(binding.bottomSheet)
+        bottomSheetBehavior.isGestureInsetBottomIgnored = true
+        bottomSheetBehavior.addBottomSheetCallback(object :
+            BottomSheetBehavior.BottomSheetCallback() {
+            override fun onStateChanged(bottomSheet: View, newState: Int) {
+
+            }
+
+            override fun onSlide(bottomSheet: View, slideOffset: Float) {
+            }
+
+        })
+
+        binding.layoutFilterBottomSheet.filterItems.layoutManager = LinearLayoutManager(this@MainActivity,
+            LinearLayoutManager.HORIZONTAL,false)
+        getBitmapFromAsset(this, "sample.png")?.let { bitmap->
+            binding.imageView.setImageBitmap(bitmap)
+
+            binding.layoutFilterBottomSheet.filterItems.adapter = FiltersRecyclerAdapter(this,bitmap).also {
+                it.submitList(TextBitmapFilter.listOfFilters)
+            }
+        }
+
+
     }
 
+    fun getBitmapFromAsset(context: Context, filePath: String?): Bitmap? {
+        val assetManager: AssetManager = context.getAssets()
+        val istr: InputStream
+        var bitmap: Bitmap? = null
+        try {
+            istr = assetManager.open(filePath!!)
+            bitmap = BitmapFactory.decodeStream(istr)
+        } catch (e: IOException) {
+            // handle exception
+        }
+        return bitmap
+    }
 
     private fun openCamera() {
 
@@ -161,8 +212,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun generateTextView(imageProxy: ImageProxy) {
         lifecycleScope.launch {
-            textCanvasView.generateTextView(imageProxy) {
-                binding.imageView.setImageBitmap(it)
+            textCanvasView.generateTextViewFromImageProxy(imageProxy) {
+//                binding.imageView.setImageBitmap(it)
             }
         }
     }
@@ -182,4 +233,9 @@ class MainActivity : AppCompatActivity() {
         PackageManager.FEATURE_CAMERA_FRONT
     )
 
+    override fun onItemClicked(textBitmapFilter: TextBitmapFilter) {
+        textCanvasView.filter = textBitmapFilter
+    }
+
 }
+

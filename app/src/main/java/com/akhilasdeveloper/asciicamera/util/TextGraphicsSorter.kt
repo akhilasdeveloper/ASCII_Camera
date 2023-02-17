@@ -24,11 +24,11 @@ class TextGraphicsSorter {
         canvas.setBitmap(bitmap)
     }
 
-    suspend fun sortTextByBrightness(text: String): String {
+    fun sortTextByBrightness(text: String): String {
         return sortTextByBrightnessDesc(text).reversed()
     }
 
-    suspend fun sortTextByBrightnessDesc(text: String): String{
+    fun sortTextByBrightnessDesc(text: String): String{
 
         val newString = mutableMapOf<Char,Double>()
         for (i in text.toCharArray()){

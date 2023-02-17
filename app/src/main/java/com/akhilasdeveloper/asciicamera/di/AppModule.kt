@@ -3,6 +3,7 @@ package com.akhilasdeveloper.asciicamera.di
 import android.content.Context
 import com.akhilasdeveloper.asciicamera.repository.datastore.DataStoreFunctions
 import com.akhilasdeveloper.asciicamera.repository.datastore.DataStoreFunctionsImpl
+import com.akhilasdeveloper.asciicamera.util.ColorSorter
 import com.akhilasdeveloper.asciicamera.util.TextGraphicsSorter
 import dagger.Module
 import dagger.Provides
@@ -19,6 +20,12 @@ object AppModule {
     @Provides
     fun provideTextGraphicsSorter(): TextGraphicsSorter {
         return TextGraphicsSorter()
+    }
+
+    @Singleton
+    @Provides
+    fun provideColorSorter(): ColorSorter {
+        return ColorSorter()
     }
 
     @Singleton

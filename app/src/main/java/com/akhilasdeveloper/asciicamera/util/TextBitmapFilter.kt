@@ -8,7 +8,7 @@ import kotlin.math.sqrt
 sealed class TextBitmapFilter {
 
 
-    companion object{
+    companion object {
         data class CharData(
             val char: Char,
             val colorFg: Int,
@@ -16,12 +16,36 @@ sealed class TextBitmapFilter {
         )
 
         data class FilterSpecs(
-            val density: String,
-            val fgColors: ArrayList<Int>,
-            val colorBg: Int
+            val density: String = "",
+            val fgColors: ArrayList<Int> = arrayListOf(),
+            val colorBg: Int = Color.BLACK
         )
 
+        fun getFilterByID(id: Int): TextBitmapFilter = when (id) {
+            BlackOnWhite.id -> {
+                BlackOnWhite
+            }
+            WhiteOnBlack.id -> {
+                WhiteOnBlack
+            }
+            OriginalColor.id -> {
+                OriginalColor
+            }
+            ANSI.id -> {
+                ANSI
+            }
+            Custom.id -> {
+                Custom
+            }
+            else -> {
+                BlackOnWhite
+            }
+        }
+
+        val listOfFilters:ArrayList<TextBitmapFilter> = arrayListOf(BlackOnWhite, WhiteOnBlack, OriginalColor, ANSI)
+
     }
+
     fun bitmapToText(bitmap: Bitmap): ArrayList<ArrayList<CharData>> {
 
         val drawListY = arrayListOf<ArrayList<CharData>>()
@@ -82,11 +106,16 @@ sealed class TextBitmapFilter {
     }
 
 
+    abstract val id: Int
+
     protected abstract val density: String
     protected abstract fun fgColors(pixel: Int): ArrayList<Int>
     protected abstract fun bgColor(pixel: Int): Int
 
     object BlackOnWhite : TextBitmapFilter() {
+        override val id: Int
+            get() = -1
+
         override val density: String
             get() = "Ñ@#W\$9876543210?!abc;:+=-,.      "
 
@@ -96,6 +125,8 @@ sealed class TextBitmapFilter {
     }
 
     object WhiteOnBlack : TextBitmapFilter() {
+        override val id: Int
+            get() = -2
         override val density: String
             get() = "      .,-=+:;cba!?0123456789\$W#@Ñ"
 
@@ -105,6 +136,8 @@ sealed class TextBitmapFilter {
     }
 
     object OriginalColor : TextBitmapFilter() {
+        override val id: Int
+            get() = -3
         override val density: String
             get() = "Ñ@#"
 
@@ -114,21 +147,48 @@ sealed class TextBitmapFilter {
     }
 
     object ANSI : TextBitmapFilter() {
-        override val density: String
-            get() = "Ñ@#"
 
-        override fun fgColors(pixel: Int): ArrayList<Int> = arrayListOf(Color.WHITE, Color.CYAN, Color.MAGENTA, Color.BLUE, Color.YELLOW, Color.GREEN, Color.RED, Color.BLACK)
+        private val colorSorter = ColorSorter()
+
+        override val id: Int
+            get() = -4
+        override val density: String
+            get() = "@BOo:. "
+
+        override fun fgColors(pixel: Int): ArrayList<Int> = ArrayList(colorSorter.sortColorsByBrightnessDesc(
+            listOf(
+            Color.WHITE,
+            Color.CYAN,
+            Color.MAGENTA,
+            Color.BLUE,
+            Color.YELLOW,
+            Color.GREEN,
+            Color.RED,
+            Color.BLACK
+        )))
 
         override fun bgColor(pixel: Int): Int = Color.BLACK
     }
 
-    class Custom(private val filterSpecs: FilterSpecs) : TextBitmapFilter() {
+    object Custom : TextBitmapFilter() {
+
+        private var specs: FilterSpecs = FilterSpecs()
+        operator fun invoke(filterSpecs: FilterSpecs): TextBitmapFilter {
+            specs = filterSpecs
+
+            return this
+        }
+
+        override val id: Int
+            get() = -5
         override val density: String
-            get() = filterSpecs.density
+            get() = specs.density
 
-        override fun fgColors(pixel: Int): ArrayList<Int> = if (filterSpecs.fgColors.isEmpty()) arrayListOf(pixel) else filterSpecs.fgColors
 
-        override fun bgColor(pixel: Int): Int = filterSpecs.colorBg
+        override fun fgColors(pixel: Int): ArrayList<Int> =
+            if (specs.fgColors.isEmpty()) arrayListOf(pixel) else specs.fgColors
+
+        override fun bgColor(pixel: Int): Int = specs.colorBg
     }
 }
 

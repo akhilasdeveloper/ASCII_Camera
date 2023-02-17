@@ -29,7 +29,7 @@
 
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
-        <com.akhilasdeveloper.asciicamera.ui.TextCanvasView
+        <com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
             android:id="@+id/gridViewHolder"
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -66,5 +66,21 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:contentDescription="@string/image_preview" />
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/bottom_sheet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/menu_bg_color"
+        android:orientation="vertical"
+        app:behavior_hideable="true"
+        app:behavior_peekHeight="0dp"
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+        <include
+            android:id="@+id/layout_filter_bottom_sheet"
+            layout="@layout/layout_filter_bottom_sheet" />
+
+    </androidx.core.widget.NestedScrollView>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

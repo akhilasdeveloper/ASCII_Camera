@@ -6,10 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.akhilasdeveloper.asciicamera.repository.Repository
 import com.akhilasdeveloper.asciicamera.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -18,11 +15,11 @@ class MainViewModel @Inject constructor(
     private val repository: Repository
 ) : ViewModel() {
 
-    private val _lensState = MutableSharedFlow<CameraSelector>()
-    val lensState: SharedFlow<CameraSelector> = _lensState
+    private val _lensState = MutableStateFlow(CameraSelector.DEFAULT_BACK_CAMERA)
+    val lensState: StateFlow<CameraSelector> = _lensState
 
-    private val _inverseCanvasState = MutableSharedFlow<Boolean>()
-    val inverseCanvasState: SharedFlow<Boolean> = _inverseCanvasState
+    private val _inverseCanvasState = MutableStateFlow(false)
+    val inverseCanvasState: StateFlow<Boolean> = _inverseCanvasState
 
     private suspend fun setLens(lens: CameraSelector) {
         repository.setCurrentLens(lens.toCameraSelectorInt())
@@ -47,8 +44,8 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private suspend fun isCanvasNeedsToBeInverse(lens: Int) {
-        _inverseCanvasState.emit(lens != Constants.DEFAULT_FRONT_CAMERA)
+    private fun isCanvasNeedsToBeInverse(lens: Int) {
+        _inverseCanvasState.value = lens == Constants.DEFAULT_FRONT_CAMERA
     }
 
     private fun Int.toCameraSelector(): CameraSelector =

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/filterItemImage"
+    android:layout_width="128dp"
+    android:layout_height="128dp"
+    />
