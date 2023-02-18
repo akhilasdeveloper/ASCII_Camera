@@ -2,8 +2,9 @@ package com.akhilasdeveloper.asciicamera.util
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.get
-import kotlin.math.sqrt
+import timber.log.Timber
 
 sealed class TextBitmapFilter {
 
@@ -68,12 +69,12 @@ sealed class TextBitmapFilter {
     }
 
     private fun filterPixelToChar(pixel: Int): CharData {
-        val brightness = pixel.brightness()
+        val brightness = ColorUtils.calculateLuminance(pixel)
         val fgColors = fgColors(pixel)
         val fgColorsLength = fgColors.size
         val densityLength = density.length
-        val charIndex = map(brightness.toInt(), 0, 255, 0, densityLength)
-        val fgColorIndex = map(brightness.toInt(), 0, 255, 0, fgColorsLength)
+        val charIndex = map(brightness.toFloat(), 0f, 1f, 0, densityLength)
+        val fgColorIndex = map(brightness.toFloat(), 0f, 1f, 0, fgColorsLength)
         return CharData(
             char = density[densityLength - charIndex - 1],
             colorFg = fgColors[fgColorsLength - fgColorIndex - 1],
@@ -81,29 +82,17 @@ sealed class TextBitmapFilter {
         )
     }
 
-    private fun map(
-        value: Int,
-        startValue: Int,
-        endValue: Int,
+    protected fun map(
+        value: Float,
+        startValue: Float,
+        endValue: Float,
         mapStartValue: Int,
         mapEndValue: Int
     ): Int {
         val n = endValue - startValue
         val mapN = mapEndValue - mapStartValue
-        val factor = mapN.toFloat() / n.toFloat()
+        val factor = mapN.toFloat() / n
         return ((startValue + value) * factor).toInt().coerceAtLeast(0).coerceAtMost(mapN - 1)
-    }
-
-    private fun Int.brightness(): Double {
-
-        val r = Color.red(this)
-        val g = Color.red(this)
-        val b = Color.red(this)
-
-        return sqrt(
-            r * r * .241 + g
-                    * g * .691 + b * b * .068
-        )
     }
 
     abstract val id:Int
@@ -179,6 +168,9 @@ sealed class TextBitmapFilter {
 
     object ANSI : TextBitmapFilter() {
 
+
+        private const val ANSI_COLOR_RATIO = 2f / 8
+
         override val id: Int
             get() = -4
         override val name: String
@@ -192,15 +184,16 @@ sealed class TextBitmapFilter {
             get() = "Ñ@#"
 
         override fun fgColors(pixel: Int): ArrayList<Int> = arrayListOf(
-            Color.WHITE,
-            Color.CYAN,
-            Color.MAGENTA,
-            Color.BLUE,
-            Color.YELLOW,
-            Color.GREEN,
-            Color.RED,
-            Color.BLACK
+            toANSI(pixel)
         )
+
+        private fun toANSI(pixel: Int):Int{
+            val r = if (Color.red(pixel)/255f >= ANSI_COLOR_RATIO) 255 else 0
+            val g = if (Color.green(pixel)/255f >= ANSI_COLOR_RATIO) 255 else 0
+            val b = if (Color.blue(pixel)/255f >= ANSI_COLOR_RATIO) 255 else 0
+
+            return Color.argb(255,r,g,b)
+        }
 
         override fun bgColor(pixel: Int): Int = Color.BLACK
     }

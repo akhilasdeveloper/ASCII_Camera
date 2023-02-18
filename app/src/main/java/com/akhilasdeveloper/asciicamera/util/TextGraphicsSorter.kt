@@ -1,6 +1,7 @@
 package com.akhilasdeveloper.asciicamera.util
 
 import android.graphics.*
+import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.get
 import timber.log.Timber
 import kotlin.math.sqrt
@@ -48,7 +49,7 @@ class TextGraphicsSorter {
         bitmapTest?.invoke(bitmap)
         for (pixel in bitmap){
             Timber.d("Pixels: $pixel")
-            brightness += pixel.brightness()
+            brightness += ColorUtils.calculateLuminance(pixel)
         }
 
         return brightness
@@ -63,18 +64,6 @@ class TextGraphicsSorter {
         }
 
         return arrayList.iterator()
-    }
-
-    private fun Int.brightness(): Double {
-
-        val r = Color.red(this)
-        val g = Color.red(this)
-        val b = Color.red(this)
-
-        return sqrt(
-            r * r * .241 + g
-                    * g * .691 + b * b * .068
-        )
     }
 
 

@@ -1,6 +1,7 @@
 package com.akhilasdeveloper.asciicamera.util
 
 import android.graphics.*
+import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.get
 import kotlin.math.sqrt
 
@@ -15,15 +16,13 @@ class ColorSorter {
         val newColors = mutableMapOf<Int,Double>()
 
         for (i in colors){
-            newColors[i] = getColorBrightness(i)
+            newColors[i] = ColorUtils.calculateLuminance(i)
         }
 
         val sorted = newColors.toList().sortedBy { (_, value) -> value}.toMap()
         return sorted.keys.toList()
 
     }
-
-    private fun getColorBrightness(color: Int): Double = color.brightness()
 
 
     private operator fun Bitmap.iterator(): Iterator<Int>{
@@ -36,17 +35,6 @@ class ColorSorter {
         return arrayList.iterator()
     }
 
-    private fun Int.brightness(): Double {
-
-        val r = Color.red(this)
-        val g = Color.red(this)
-        val b = Color.red(this)
-
-        return sqrt(
-            r * r * .241 + g
-                    * g * .691 + b * b * .068
-        )
-    }
 
 
 
