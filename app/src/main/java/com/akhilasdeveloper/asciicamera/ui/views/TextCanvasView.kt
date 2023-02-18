@@ -94,7 +94,7 @@ class TextCanvasView(
 
     private val drawList = arrayListOf<ArrayList<CharData>>()
     private var bgColor = Color.BLACK
-    var filter: TextBitmapFilter = TextBitmapFilter.WhiteOnBlack
+    var filter: TextBitmapFilter? = null
         set(value) {
             field = value
             draw()
@@ -103,7 +103,7 @@ class TextCanvasView(
     private fun draw() {
         scaledBitmap?.let {
             drawList.clear()
-            drawList.addAll(filter.bitmapToText(it))
+            drawList.addAll((filter?:TextBitmapFilter.WhiteOnBlack).bitmapToText(it))
             calculateStartVal()
             bgColor = drawList.first().first().colorBg
             postInvalidate()

@@ -85,40 +85,15 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
             viewModel.toggleCamera()
         }
         binding.filterButton.setOnClickListener {
-            when (textCanvasView.filter) {
-                is TextBitmapFilter.WhiteOnBlack -> {
-                    textCanvasView.filter = TextBitmapFilter.BlackOnWhite
-                }
-                is TextBitmapFilter.BlackOnWhite -> {
-                    textCanvasView.filter = TextBitmapFilter.OriginalColor
-                }
-                is TextBitmapFilter.OriginalColor -> {
-                    textCanvasView.filter = TextBitmapFilter.ANSI
-                }
-                is TextBitmapFilter.ANSI -> {
-                    CoroutineScope(Dispatchers.Default).launch {
-                        textCanvasView.filter = TextBitmapFilter.Custom(
-                            FilterSpecs(
-//                                density = textGraphicsSorter.sortTextByBrightness("!@#$%^&*()_+=-|}{[]\\\":;',.><?/~`"),
-                                density = "!@#$%^&*()_+=-|}{[]\\\":;',.><?/~`",
-                                fgColors = arrayListOf(Color.WHITE),
-                                colorBg = Color.BLACK
-                            )
-                        )
-                    }
-                }
-                is TextBitmapFilter.Custom -> {
-                    textCanvasView.filter = TextBitmapFilter.WhiteOnBlack
-                }
-            }
-        }
-
-        binding.captureButton.setOnClickListener {
             if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
                 bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
             else {
                 bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
             }
+        }
+
+        binding.captureButton.setOnClickListener {
+
         }
 
     }
