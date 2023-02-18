@@ -55,7 +55,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
     @Inject
     lateinit var textGraphicsSorter: TextGraphicsSorter
 
-    lateinit var viewModel: MainViewModel
+    private lateinit var viewModel: MainViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,8 +98,9 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
                 is TextBitmapFilter.ANSI -> {
                     CoroutineScope(Dispatchers.Default).launch {
                         textCanvasView.filter = TextBitmapFilter.Custom(
-                            filterSpecs = FilterSpecs(
-                                density = textGraphicsSorter.sortTextByBrightness("!@#$%^&*()_+=-|}{[]\\\":;',.><?/~`"),
+                            FilterSpecs(
+//                                density = textGraphicsSorter.sortTextByBrightness("!@#$%^&*()_+=-|}{[]\\\":;',.><?/~`"),
+                                density = "!@#$%^&*()_+=-|}{[]\\\":;',.><?/~`",
                                 fgColors = arrayListOf(Color.WHITE),
                                 colorBg = Color.BLACK
                             )
@@ -173,13 +174,13 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
 
     }
 
-    fun getBitmapFromAsset(context: Context, filePath: String?): Bitmap? {
-        val assetManager: AssetManager = context.getAssets()
-        val istr: InputStream
+    private fun getBitmapFromAsset(context: Context, filePath: String?): Bitmap? {
+        val assetManager: AssetManager = context.assets
+        val str: InputStream
         var bitmap: Bitmap? = null
         try {
-            istr = assetManager.open(filePath!!)
-            bitmap = BitmapFactory.decodeStream(istr)
+            str = assetManager.open(filePath!!)
+            bitmap = BitmapFactory.decodeStream(str)
         } catch (e: IOException) {
             // handle exception
         }
@@ -212,9 +213,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
 
     private fun generateTextView(imageProxy: ImageProxy) {
         lifecycleScope.launch {
-            textCanvasView.generateTextViewFromImageProxy(imageProxy) {
-//                binding.imageView.setImageBitmap(it)
-            }
+            textCanvasView.generateTextViewFromImageProxy(imageProxy)
         }
     }
 

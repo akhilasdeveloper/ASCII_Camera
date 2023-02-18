@@ -42,7 +42,8 @@ sealed class TextBitmapFilter {
             }
         }
 
-        val listOfFilters:ArrayList<TextBitmapFilter> = arrayListOf(BlackOnWhite, WhiteOnBlack, OriginalColor, ANSI)
+        val listOfFilters: ArrayList<TextBitmapFilter> =
+            arrayListOf(WhiteOnBlack, BlackOnWhite, OriginalColor, ANSI)
 
     }
 
@@ -105,30 +106,42 @@ sealed class TextBitmapFilter {
         )
     }
 
-
-    abstract val id: Int
+    abstract val id:Int
 
     protected abstract val density: String
     protected abstract fun fgColors(pixel: Int): ArrayList<Int>
     protected abstract fun bgColor(pixel: Int): Int
 
-    object BlackOnWhite : TextBitmapFilter() {
+
+    object WhiteOnBlack : TextBitmapFilter() {
+
         override val id: Int
-            get() = -1
+            get() = -2
+
+        private var specs: FilterSpecs = FilterSpecs()
+        operator fun invoke(filterSpecs: FilterSpecs = FilterSpecs()){
+            specs = filterSpecs
+        }
 
         override val density: String
-            get() = "Ñ@#W\$9876543210?!abc;:+=-,.      "
+            get() = ".:oOB@"
 
         override fun fgColors(pixel: Int): ArrayList<Int> = arrayListOf(Color.WHITE)
 
         override fun bgColor(pixel: Int): Int = Color.BLACK
     }
 
-    object WhiteOnBlack : TextBitmapFilter() {
+    object BlackOnWhite : TextBitmapFilter() {
+
         override val id: Int
-            get() = -2
+            get() = -12
+        private var specs: FilterSpecs = FilterSpecs()
+        operator fun invoke(filterSpecs: FilterSpecs = FilterSpecs()){
+            specs = filterSpecs
+        }
+
         override val density: String
-            get() = "      .,-=+:;cba!?0123456789\$W#@Ñ"
+            get() = "Ñ@#W\$9876543210?!abc;:+=-,."
 
         override fun fgColors(pixel: Int): ArrayList<Int> = arrayListOf(Color.BLACK)
 
@@ -136,8 +149,14 @@ sealed class TextBitmapFilter {
     }
 
     object OriginalColor : TextBitmapFilter() {
+
         override val id: Int
             get() = -3
+        private var specs: FilterSpecs = FilterSpecs()
+        operator fun invoke(filterSpecs: FilterSpecs = FilterSpecs()){
+            specs = filterSpecs
+        }
+
         override val density: String
             get() = "Ñ@#"
 
@@ -148,15 +167,17 @@ sealed class TextBitmapFilter {
 
     object ANSI : TextBitmapFilter() {
 
-        private val colorSorter = ColorSorter()
-
         override val id: Int
             get() = -4
-        override val density: String
-            get() = "@BOo:. "
+        private var specs: FilterSpecs = FilterSpecs()
+        operator fun invoke(filterSpecs: FilterSpecs = FilterSpecs()){
+            specs = filterSpecs
+        }
 
-        override fun fgColors(pixel: Int): ArrayList<Int> = ArrayList(colorSorter.sortColorsByBrightnessDesc(
-            listOf(
+        override val density: String
+            get() = "Ñ@#"
+
+        override fun fgColors(pixel: Int): ArrayList<Int> = arrayListOf(
             Color.WHITE,
             Color.CYAN,
             Color.MAGENTA,
@@ -165,7 +186,7 @@ sealed class TextBitmapFilter {
             Color.GREEN,
             Color.RED,
             Color.BLACK
-        )))
+        )
 
         override fun bgColor(pixel: Int): Int = Color.BLACK
     }
@@ -173,7 +194,7 @@ sealed class TextBitmapFilter {
     object Custom : TextBitmapFilter() {
 
         private var specs: FilterSpecs = FilterSpecs()
-        operator fun invoke(filterSpecs: FilterSpecs): TextBitmapFilter {
+        operator fun invoke(filterSpecs: FilterSpecs = FilterSpecs()):TextBitmapFilter{
             specs = filterSpecs
 
             return this
@@ -181,6 +202,7 @@ sealed class TextBitmapFilter {
 
         override val id: Int
             get() = -5
+
         override val density: String
             get() = specs.density
 

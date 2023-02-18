@@ -1,15 +1,16 @@
 package com.akhilasdeveloper.asciicamera.ui.views
 
 import android.content.Context
+import android.content.res.Resources
 import android.graphics.*
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
 import android.util.AttributeSet
+import android.util.TypedValue
 import android.view.View
 import androidx.camera.core.ImageProxy
 import com.akhilasdeveloper.asciicamera.R
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.CharData
+import com.akhilasdeveloper.asciicamera.util.TextGraphicsSorter
 import timber.log.Timber
 import java.nio.ByteBuffer
 
@@ -43,41 +44,74 @@ class TextCanvasView(
 
             val ta = context.obtainStyledAttributes(attrSet, R.styleable.TextCanvasView)
 
-            ta.getDrawable(
-                R.styleable.TextCanvasView_src)?.let {drawable->
-                drawableToBitmap(drawable)?.let {bitmap: Bitmap ->
-                    generateTextViewFromBitmap(bitmap)
-                }
-            }
+            textCharSize =
+                ta.getDimension(R.styleable.TextCanvasView_textSize, textCharSize).spToPx()
+
             ta.recycle()
 
         }
     }
 
+    private var paint = Paint().apply {
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD);
+    }
+
     var textCharSize = 15f
+        set(value) {
+            field = value
+            canvasWidth = width / textCharSize
+            canvasHeight = height / textCharSize
+            paint.textSize = textCharSize
+            scaleBitmap()
+        }
     private var xStartVal = 0f
     private var yStartVal = 0f
-    private var canvasWidth = 0f
-    private var canvasHeight = 0f
+    private var canvasWidth = 1f
+        set(value) {
+            field = if (value < 1) 1f else value
+        }
+    private var canvasHeight = 1f
+        set(value) {
+            field = if (value < 1) 1f else value
+        }
     private var bitmapWidth = 0
     private var bitmapHeight = 0
     var inverse = false
     var rotateDegree: Float? = null
+    private val textBounds: Rect = Rect()
 
-    private var paint = Paint().apply {
-        textSize = textCharSize
-    }
+    private var bitmap: Bitmap? = null
+        set(value) {
+            field = value
+            scaleBitmap()
+        }
+
+    private var scaledBitmap: Bitmap? = null
+        set(value) {
+            field = value
+            draw()
+        }
 
     private val drawList = arrayListOf<ArrayList<CharData>>()
     private var bgColor = Color.BLACK
-    var filter: TextBitmapFilter = TextBitmapFilter.BlackOnWhite
+    var filter: TextBitmapFilter = TextBitmapFilter.WhiteOnBlack
+        set(value) {
+            field = value
+            draw()
+        }
 
-    private fun draw(list: ArrayList<ArrayList<CharData>>) {
-        drawList.clear()
-        drawList.addAll(list)
-        calculateStartVal()
-        bgColor = list.first().first().colorBg
-        postInvalidate()
+    private fun draw() {
+        scaledBitmap?.let {
+            drawList.clear()
+            drawList.addAll(filter.bitmapToText(it))
+            calculateStartVal()
+            bgColor = drawList.first().first().colorBg
+            postInvalidate()
+        }
+    }
+
+    private fun scaleBitmap() {
+        scaledBitmap = bitmap?.scaleToCanvas()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -86,8 +120,7 @@ class TextCanvasView(
         canvasWidth = width / textCharSize
         canvasHeight = height / textCharSize
 
-        Timber.d("canvasHeight:canvasWidth $canvasHeight:$canvasWidth")
-
+        scaleBitmap()
     }
 
     private fun calculateStartVal() {
@@ -98,23 +131,14 @@ class TextCanvasView(
         Timber.d("xStartVal:yStartVal ${(width - (bitmapWidth * textCharSize)) / 2f}:${(height - (bitmapHeight * textCharSize)) / 2f}")
     }
 
-    fun generateTextViewFromImageProxy(imageProxy: ImageProxy, toBitmap: (Bitmap) -> Unit) {
-        imageProxy.toBitmap()?.scaleDownToCanvas()?.let { bitmap: Bitmap ->
-
-            toBitmap(bitmap)
-            draw(filter.bitmapToText(bitmap))
-            imageProxy.close()
-        }
-
+    fun generateTextViewFromImageProxy(imageProxy: ImageProxy) {
+        bitmap = imageProxy.toBitmap()
+        imageProxy.close()
     }
 
     fun generateTextViewFromBitmap(bitmap: Bitmap) {
-        /*bitmap.scaleDownToCanvas().let { bmp: Bitmap ->
-            draw(filter.bitmapToText(bmp))
-        }*/
-        draw(filter.bitmapToText(bitmap))
+        this.bitmap = bitmap
     }
-
 
     private fun ImageProxy.toBitmap(): Bitmap? {
         val planes = planes
@@ -139,7 +163,7 @@ class TextCanvasView(
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
-    private fun Bitmap.scaleDownToCanvas(): Bitmap {
+    private fun Bitmap.scaleToCanvas(): Bitmap {
 
         if (height <= canvasHeight && width <= canvasWidth)
             return this
@@ -186,11 +210,19 @@ class TextCanvasView(
 
             var xVal = xStartVal
             var yVal = yStartVal
+            if (drawList.isNotEmpty())
+                paint.getTextBounds(drawList.first().first().toString(), 0, 1, textBounds);
             for (y in 0 until drawList.size) {
                 for (x in 0 until drawList[0].size) {
                     drawList[y][x].let {
+                        val string = it.char.toString()
                         paint.color = it.colorFg
-                        drawText(it.char.toString(), xVal, yVal, paint)
+                        canvas.drawText(
+                            string,
+                            (textCharSize / 2f) - textBounds.exactCenterX() + xVal,
+                            (textCharSize / 2f) - textBounds.exactCenterY() + yVal,
+                            paint
+                        )
                     }
                     xVal += textCharSize
                 }
@@ -201,31 +233,11 @@ class TextCanvasView(
         }
     }
 
-    fun drawableToBitmap(drawable: Drawable): Bitmap? {
-        var bitmap: Bitmap? = null
-        if (drawable is BitmapDrawable) {
-            if (drawable.bitmap != null) {
-                return drawable.bitmap
-            }
-        }
-        bitmap = if (drawable.intrinsicWidth <= 0 || drawable.intrinsicHeight <= 0) {
-            Bitmap.createBitmap(
-                1,
-                1,
-                Bitmap.Config.ARGB_8888
-            )
-        } else {
-            Bitmap.createBitmap(
-                drawable.intrinsicWidth,
-                drawable.intrinsicHeight,
-                Bitmap.Config.ARGB_8888
-            )
-        }
-        val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-        return bitmap
-    }
+    private fun Float.spToPx(): Float = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_SP,
+        this,
+        Resources.getSystem().displayMetrics
+    )
 
 }
 

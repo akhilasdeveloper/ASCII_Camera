@@ -37,7 +37,6 @@ class FiltersRecyclerAdapter(
 
             fun bindPhoto(photo: TextBitmapFilter, position: Int) {
                 binding.filterItemImage.filter = photo
-                binding.filterItemImage.textCharSize = 8f
                 binding.filterItemImage.generateTextViewFromBitmap(bitmap = sampleBitmap)
                 binding.root.setOnClickListener {
                     interaction?.onItemClicked(photo)

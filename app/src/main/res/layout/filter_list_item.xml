@@ -1,7 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/filterItemImage"
-    android:layout_width="128dp"
-    android:layout_height="128dp"
-    />
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:layout_margin="2dp">
+
+    <com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
+        android:id="@+id/filterItemImage"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        app:textSize="1sp"
+        tools:ignore="SmallSp"
+        android:layout_margin="2dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/filterName"/>
+
+</LinearLayout>
