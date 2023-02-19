@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.akhilasdeveloper.asciicamera.repository.Repository
 import com.akhilasdeveloper.asciicamera.util.Constants
+import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
+import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -14,6 +16,9 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     private val repository: Repository
 ) : ViewModel() {
+
+    private val _bottomSheetAddCustomFilterState = MutableStateFlow<FilterSpecs>(FilterSpecs())
+    val bottomSheetAddCustomFilterState: StateFlow<FilterSpecs> = _bottomSheetAddCustomFilterState
 
     private val _lensState = MutableStateFlow(CameraSelector.DEFAULT_BACK_CAMERA)
     val lensState: StateFlow<CameraSelector> = _lensState
@@ -30,6 +35,10 @@ class MainViewModel @Inject constructor(
             isCanvasNeedsToBeInverse(lens)
             _lensState.emit(lens.toCameraSelector())
         }.launchIn(viewModelScope)
+    }
+
+    fun bottomSheetAddCustomFilterState(filterSpecs: FilterSpecs){
+        _bottomSheetAddCustomFilterState.value = filterSpecs
     }
 
     fun toggleCamera() {

@@ -5,15 +5,29 @@
     android:background="@color/menu_bg_color"
     android:orientation="vertical">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/filter"
-        android:text="@string/filters"
-        android:textSize="16sp"
-        android:textColor="@color/menu_fg_color"
-        android:padding="5dp"
-        android:layout_margin="5dp"/>
+        android:orientation="horizontal"
+        android:padding="10dp"
+        android:gravity="center">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:id="@+id/filter"
+            android:text="@string/filters"
+            android:layout_weight="1"
+            android:textSize="16sp"
+            android:textColor="@color/menu_fg_color"/>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/close"
+            android:id="@+id/closeFilterSheet"/>
+
+    </LinearLayout>
 
     <View
         android:layout_width="match_parent"
@@ -32,15 +46,29 @@
         android:background="@color/menu_fg_color"
         android:layout_marginBottom="5dp"/>
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/filterCustom"
-        android:text="@string/custom_filters"
-        android:textSize="16sp"
-        android:textColor="@color/menu_fg_color"
-        android:padding="5dp"
-        android:layout_margin="5dp"/>
+        android:orientation="horizontal"
+        android:padding="10dp"
+        android:gravity="center">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:id="@+id/filterCustom"
+            android:text="@string/custom_filters"
+            android:layout_weight="1"
+            android:textSize="16sp"
+            android:textColor="@color/menu_fg_color"/>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/add"
+            android:id="@+id/addCustomFilter"/>
+
+    </LinearLayout>
 
     <View
         android:layout_width="match_parent"

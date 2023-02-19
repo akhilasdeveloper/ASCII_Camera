@@ -31,13 +31,17 @@ class TextGraphicsSorter {
 
     fun sortTextByBrightnessDesc(text: String): String{
 
-        val newString = mutableMapOf<Char,Double>()
-        for (i in text.toCharArray()){
-            newString[i] = getCharBrightness(i)
+        val newString = mutableMapOf<Int,Double>()
+
+        for (k in text.indices){
+            newString[k] = getCharBrightness(text[k])
         }
         Timber.d("Sorting map $newString")
         val sorted = newString.toList().sortedBy { (_, value) -> value}.toMap()
-        return String(sorted.keys.toCharArray())
+        val newStr = StringBuffer("")
+        for (i in sorted.keys)
+            newStr.append(text[i])
+        return newStr.toString()
 
     }
 

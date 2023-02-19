@@ -5,4 +5,12 @@
     <string name="filter">Filter</string>
     <string name="filters">Filters</string>
     <string name="custom_filters">Custom Filters</string>
+    <string name="add">Add</string>
+    <string name="close">Close</string>
+    <string name="create_new_filter">Create new filter</string>
+    <string name="enter_characters">Enter characters</string>
+    <string name="sort">Sort</string>
+    <string name="foreground_color">Foreground Color</string>
+    <string name="background_color">Background Color</string>
+    <string name="reverse">Reverse</string>
 </resources>

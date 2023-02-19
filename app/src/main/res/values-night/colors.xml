@@ -12,7 +12,10 @@
     <color name="can_fg_color">#ffffff</color>
     <color name="menu_bg_color">#2B2B2B</color>
     <color name="menu_fg_color">#DDDDDD</color>
+    <color name="panel_bg_color">#2B2B2B</color>
+    <color name="panel_fg_color">#DDDDDD</color>
     <color name="menu_btn_pressed_color">#1E1E1E</color>
+    <color name="panel_btn_pressed_color">#1E1E1E</color>
     <color name="capture_btn_stroke_color">#C59B6D</color>
     <color name="capture_btn_fill_color">#A3805A</color>
 </resources>

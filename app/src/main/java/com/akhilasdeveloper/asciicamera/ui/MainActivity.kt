@@ -6,7 +6,7 @@ import android.content.pm.PackageManager
 import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
@@ -17,6 +17,7 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.core.widget.NestedScrollView
+import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -24,14 +25,14 @@ import com.akhilasdeveloper.asciicamera.databinding.ActivityMainBinding
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.FiltersRecyclerAdapter
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerFiltersClickListener
 import com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
+import com.akhilasdeveloper.asciicamera.util.Constants.BITMAP_PATH
+import com.akhilasdeveloper.asciicamera.util.Constants.DEFAULT_CUSTOM_CHARS
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
 import com.akhilasdeveloper.asciicamera.util.TextGraphicsSorter
 import com.akhilasdeveloper.asciicamera.util.observe
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.IOException
@@ -51,11 +52,13 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
 
     private var cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<NestedScrollView>
+    private lateinit var createFilterBottomSheetBehavior: BottomSheetBehavior<NestedScrollView>
 
     @Inject
     lateinit var textGraphicsSorter: TextGraphicsSorter
 
     private lateinit var viewModel: MainViewModel
+    private var sampleBitmap: Bitmap? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,6 +81,12 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
             textCanvasView.inverse = it
         }
 
+        viewModel.bottomSheetAddCustomFilterState.observe(lifecycleScope) {
+            binding.layoutAddFilterBottomSheet.filterItemImage.filter = TextBitmapFilter.Custom(it)
+
+            Timber.d("Entered texts :$it")
+        }
+
     }
 
     private fun setClickListeners() {
@@ -92,11 +101,69 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
             }
         }
 
+        binding.layoutFilterBottomSheet.closeFilterSheet.setOnClickListener {
+            if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
+                bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+        }
+
+        binding.layoutFilterBottomSheet.addCustomFilter.setOnClickListener {
+            if (createFilterBottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
+                createFilterBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+            else {
+                createFilterBottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
+
+                initAddFilterSheet()
+            }
+        }
+
+        binding.layoutAddFilterBottomSheet.closeFilterSheet.setOnClickListener {
+            if (createFilterBottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
+                createFilterBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+        }
+
         binding.captureButton.setOnClickListener {
 
         }
 
+        binding.layoutAddFilterBottomSheet.charactersInput.addTextChangedListener {
+            applyCustomFilterEnteredDetails()
+        }
+
+        binding.layoutAddFilterBottomSheet.sortChars.setOnClickListener {
+            binding.layoutAddFilterBottomSheet.charactersInput.setText(textGraphicsSorter.sortTextByBrightness(getDensityFromInput()))
+        }
+
+        binding.layoutAddFilterBottomSheet.reversChars.setOnClickListener {
+            binding.layoutAddFilterBottomSheet.charactersInput.setText(getDensityFromInput().reversed())
+        }
+
     }
+
+    private fun initAddFilterSheet() {
+        getSampleBitmap()?.let { bitmap ->
+            binding.layoutAddFilterBottomSheet.filterItemImage.generateTextViewFromBitmap(bitmap = bitmap)
+            applyCustomFilterEnteredDetails()
+        }
+    }
+
+    private fun applyCustomFilterEnteredDetails() {
+        viewModel.bottomSheetAddCustomFilterState(FilterSpecs().apply {
+            val density = getDensityFromInput()
+
+            this.density = density
+            this.fgColors = (binding.layoutAddFilterBottomSheet.fgColorDisp.background as ColorDrawable).color
+            this.colorBg = (binding.layoutAddFilterBottomSheet.bgColorDisp.background as ColorDrawable).color
+        })
+    }
+
+    private fun getDensityFromInput(): String =
+        binding.layoutAddFilterBottomSheet.charactersInput.text?.let {
+            if (it.isNotEmpty())
+                it.toString()
+            else
+                null
+        }?:DEFAULT_CUSTOM_CHARS
+
 
     private fun loadCamera() {
         checkPermission(Manifest.permission.CAMERA) {
@@ -125,20 +192,14 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
 
         bottomSheetBehavior = BottomSheetBehavior.from(binding.bottomSheet)
         bottomSheetBehavior.isGestureInsetBottomIgnored = true
-        bottomSheetBehavior.addBottomSheetCallback(object :
-            BottomSheetBehavior.BottomSheetCallback() {
-            override fun onStateChanged(bottomSheet: View, newState: Int) {
 
-            }
-
-            override fun onSlide(bottomSheet: View, slideOffset: Float) {
-            }
-
-        })
+        createFilterBottomSheetBehavior = BottomSheetBehavior.from(binding.filterBottomSheet)
+        createFilterBottomSheetBehavior.isGestureInsetBottomIgnored = true
 
         binding.layoutFilterBottomSheet.filterItems.layoutManager = LinearLayoutManager(this@MainActivity,
             LinearLayoutManager.HORIZONTAL,false)
-        getBitmapFromAsset(this, "sample.png")?.let { bitmap->
+
+        getSampleBitmap()?.let { bitmap->
             binding.imageView.setImageBitmap(bitmap)
 
             binding.layoutFilterBottomSheet.filterItems.adapter = FiltersRecyclerAdapter(this,bitmap).also {
@@ -146,7 +207,11 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
             }
         }
 
+    }
 
+    private fun getSampleBitmap(): Bitmap? {
+        sampleBitmap = sampleBitmap?:getBitmapFromAsset(this, BITMAP_PATH)
+        return sampleBitmap
     }
 
     private fun getBitmapFromAsset(context: Context, filePath: String?): Bitmap? {

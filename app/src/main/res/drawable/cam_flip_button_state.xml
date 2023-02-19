@@ -8,7 +8,7 @@
     <item>
         <shape android:shape="oval">
             <solid
-                android:color="@color/menu_bg_color"/>
+                android:color="@color/panel_bg_color"/>
         </shape>
     </item>
 </selector>

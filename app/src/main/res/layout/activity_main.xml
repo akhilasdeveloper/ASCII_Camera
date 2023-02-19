@@ -16,7 +16,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="20dp"
-            android:background="@color/menu_bg_color">
+            android:background="@color/panel_bg_color">
 
             <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/filter_button"
@@ -24,7 +24,7 @@
                 android:layout_height="32dp"
                 android:layout_gravity="end|center_vertical"
                 android:src="@drawable/baseline_filter_24"
-                android:tint="@color/menu_fg_color"
+                android:tint="@color/panel_fg_color"
                 android:background="@drawable/cam_flip_button_state"/>
 
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
@@ -42,7 +42,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="20dp"
-            android:background="@color/menu_bg_color">
+            android:background="@color/panel_bg_color">
 
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/capture_button"
@@ -57,7 +57,7 @@
                 android:layout_height="32dp"
                 android:layout_gravity="start|center_vertical"
                 android:src="@drawable/baseline_flip_camera_android_24"
-                android:tint="@color/menu_fg_color"
+                android:tint="@color/panel_fg_color"
                 android:background="@drawable/cam_flip_button_state"/>
 
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
@@ -82,6 +82,22 @@
         <include
             android:id="@+id/layout_filter_bottom_sheet"
             layout="@layout/layout_filter_bottom_sheet" />
+
+    </androidx.core.widget.NestedScrollView>
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/filter_bottom_sheet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/menu_bg_color"
+        android:orientation="vertical"
+        app:behavior_hideable="true"
+        app:behavior_peekHeight="0dp"
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+        <include
+            android:id="@+id/layout_add_filter_bottom_sheet"
+            layout="@layout/layout_add_filter_bottom_sheet" />
 
     </androidx.core.widget.NestedScrollView>
 
