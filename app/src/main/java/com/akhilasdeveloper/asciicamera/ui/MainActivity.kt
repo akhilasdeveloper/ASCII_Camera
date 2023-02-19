@@ -2,6 +2,7 @@ package com.akhilasdeveloper.asciicamera.ui
 
 import android.Manifest
 import android.content.Context
+import android.content.DialogInterface
 import android.content.pm.PackageManager
 import android.content.res.AssetManager
 import android.graphics.Bitmap
@@ -31,6 +32,10 @@ import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
 import com.akhilasdeveloper.asciicamera.util.TextGraphicsSorter
 import com.akhilasdeveloper.asciicamera.util.observe
+import com.flask.colorpicker.ColorPickerView
+import com.flask.colorpicker.OnColorSelectedListener
+import com.flask.colorpicker.builder.ColorPickerClickListener
+import com.flask.colorpicker.builder.ColorPickerDialogBuilder
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -137,6 +142,28 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
             binding.layoutAddFilterBottomSheet.charactersInput.setText(getDensityFromInput().reversed())
         }
 
+        binding.layoutAddFilterBottomSheet.bgColorDisp.setOnClickListener {
+            val currColor = (binding.layoutAddFilterBottomSheet.bgColorDisp.background as ColorDrawable).color
+            fetchColor(currColor, onColorSelect = {
+                binding.layoutAddFilterBottomSheet.bgColorDisp.setBackgroundColor(it)
+                applyCustomFilterEnteredDetails()
+            }, onCancel = {
+                binding.layoutAddFilterBottomSheet.bgColorDisp.setBackgroundColor(currColor)
+                applyCustomFilterEnteredDetails()
+            })
+        }
+
+        binding.layoutAddFilterBottomSheet.fgColorDisp.setOnClickListener {
+            val currColor = (binding.layoutAddFilterBottomSheet.fgColorDisp.background as ColorDrawable).color
+            fetchColor(currColor, onColorSelect = {
+                binding.layoutAddFilterBottomSheet.fgColorDisp.setBackgroundColor(it)
+                applyCustomFilterEnteredDetails()
+            }, onCancel = {
+                binding.layoutAddFilterBottomSheet.fgColorDisp.setBackgroundColor(currColor)
+                applyCustomFilterEnteredDetails()
+            })
+        }
+
     }
 
     private fun initAddFilterSheet() {
@@ -173,6 +200,28 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
             else
                 Toast.makeText(this, "Please allow camera permission", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun fetchColor(currentColor: Int, onColorSelect:(color:Int)->Unit, onCancel:()->Unit){
+        ColorPickerDialogBuilder
+            .with(this)
+            .setTitle("Choose color")
+            .initialColor(currentColor)
+            .wheelType(ColorPickerView.WHEEL_TYPE.CIRCLE)
+            .density(12)
+            .setOnColorSelectedListener(OnColorSelectedListener { _ ->
+
+            })
+            .setPositiveButton("OK",
+                ColorPickerClickListener { _, selectedColor, _ ->
+                    onColorSelect(selectedColor)
+                })
+            .setNegativeButton("cancel", DialogInterface.OnClickListener { dialog, which ->
+                onCancel()
+                dialog.cancel()
+            })
+            .build()
+            .show()
     }
 
     private fun init() {
