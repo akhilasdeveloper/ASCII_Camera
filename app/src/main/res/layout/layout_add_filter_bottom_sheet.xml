@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    xmlns:tools="http://schemas.android.com/tools"
     android:background="@color/menu_bg_color"
-    android:orientation="vertical"
-    android:gravity="center">
+    android:gravity="center"
+    android:orientation="vertical">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -24,32 +24,28 @@
             android:textColor="@color/menu_fg_color"
             android:textSize="16sp" />
 
-        <Button
+        <ImageButton
             android:id="@+id/closeFilterSheet"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/close" />
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="@android:color/transparent"
+            android:layout_gravity="end|center_vertical"
+            android:src="@drawable/round_close_24"
+            app:tint="@color/menu_fg_color"/>
 
     </LinearLayout>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height=".5dp"
-        android:background="@color/menu_fg_color"
-        android:layout_marginBottom="5dp"/>
+    <include layout="@layout/separator"/>
 
     <com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
         android:id="@+id/filterItemImage"
         android:layout_width="128dp"
         android:layout_height="128dp"
+        android:layout_margin="10dp"
         app:textSize="1sp"
-        tools:ignore="SmallSp"
-        android:layout_margin="10dp"/>
+        tools:ignore="SmallSp" />
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height=".5dp"
-        android:background="@color/menu_fg_color"/>
+    <include layout="@layout/separator"/>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -63,9 +59,9 @@
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:hint="@string/enter_characters"
+            android:layout_marginEnd="10dp"
             android:layout_weight="1"
-            android:layout_marginEnd="10dp">
+            android:hint="@string/enter_characters">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/charactersInput"
@@ -78,8 +74,8 @@
             android:id="@+id/sortChars"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/sort"
-            android:layout_marginEnd="10dp"/>
+            android:layout_marginEnd="10dp"
+            android:text="@string/sort" />
 
         <Button
             android:id="@+id/reversChars"
@@ -88,10 +84,7 @@
             android:text="@string/reverse" />
     </LinearLayout>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height=".5dp"
-        android:background="@color/menu_fg_color"/>
+    <include layout="@layout/separator"/>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -100,27 +93,53 @@
         android:orientation="horizontal"
         android:padding="10dp">
 
-        <TextView
-            android:id="@+id/fgColor"
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/foreground_color"
-            android:textColor="@color/menu_fg_color"
-            android:textSize="16sp" />
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/fgColor"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/foreground_color"
+                android:textColor="@color/menu_fg_color"
+                android:textSize="16sp" />
+
+            <RadioGroup
+                android:id="@+id/radioGroup"
+                android:checkedButton="@+id/radio_button_none"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <RadioButton
+                    android:id="@+id/radio_button_none"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Selected"/>
+                <RadioButton
+                    android:id="@+id/radio_button_ansi"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ANSI"/>
+                <RadioButton
+                    android:id="@+id/radio_button_org"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Original"/>
+            </RadioGroup>
+        </LinearLayout>
 
         <View
             android:id="@+id/fgColorDisp"
             android:layout_width="64dp"
             android:layout_height="64dp"
-            android:background="@color/white"/>
+            android:background="@color/white" />
 
     </LinearLayout>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height=".5dp"
-        android:background="@color/menu_fg_color"/>
+    <include layout="@layout/separator"/>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -142,20 +161,17 @@
             android:id="@+id/bgColorDisp"
             android:layout_width="64dp"
             android:layout_height="64dp"
-            android:background="@color/black"/>
+            android:background="@color/black" />
 
     </LinearLayout>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height=".5dp"
-        android:background="@color/menu_fg_color"/>
+    <include layout="@layout/separator"/>
 
     <Button
         android:id="@+id/add"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/add"
-        android:layout_margin="10dp"/>
+        android:layout_margin="10dp"
+        android:text="@string/add" />
 
 </LinearLayout>

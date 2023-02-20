@@ -10,6 +10,7 @@ import android.graphics.BitmapFactory
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
@@ -22,8 +23,12 @@ import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.akhilasdeveloper.asciicamera.R
 import com.akhilasdeveloper.asciicamera.databinding.ActivityMainBinding
+import com.akhilasdeveloper.asciicamera.ui.fragments.PreviewFragment
+import com.akhilasdeveloper.asciicamera.ui.recyclerview.CustomFiltersRecyclerAdapter
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.FiltersRecyclerAdapter
+import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerCustomFiltersClickListener
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerFiltersClickListener
 import com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
 import com.akhilasdeveloper.asciicamera.util.Constants.BITMAP_PATH
@@ -48,7 +53,8 @@ import javax.inject.Inject
 
 
 @AndroidEntryPoint
-class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
+class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
+    RecyclerCustomFiltersClickListener {
 
     private var _binding: ActivityMainBinding? = null
     private val binding get() = _binding!!
@@ -61,6 +67,8 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
 
     @Inject
     lateinit var textGraphicsSorter: TextGraphicsSorter
+    lateinit var customFiltersRecyclerAdapter: CustomFiltersRecyclerAdapter
+    private var capturedChars: ArrayList<ArrayList<TextBitmapFilter.Companion.CharData>> = arrayListOf()
 
     private lateinit var viewModel: MainViewModel
     private var sampleBitmap: Bitmap? = null
@@ -89,21 +97,33 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
         viewModel.bottomSheetAddCustomFilterState.observe(lifecycleScope) {
             binding.layoutAddFilterBottomSheet.filterItemImage.filter = TextBitmapFilter.Custom(it)
 
-            Timber.d("Entered texts :$it")
+        }
+
+        viewModel.customFiltersListState.observe(lifecycleScope) {
+            Timber.d("Rovers :$it")
+            customFiltersRecyclerAdapter.submitList(it)
         }
 
     }
 
     private fun setClickListeners() {
         binding.flipCameraButton.setOnClickListener {
-            viewModel.toggleCamera()
+            if (textCanvasView.isCapturedState)
+                textCanvasView.cancelCapture()
+            else
+                viewModel.toggleCamera()
         }
         binding.filterButton.setOnClickListener {
-            if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
-                bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+            if (textCanvasView.isCapturedState)
+                textCanvasView.cancelCapture()
             else {
-                bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
+                if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
+                    bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+                else {
+                    bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
+                }
             }
+
         }
 
         binding.layoutFilterBottomSheet.closeFilterSheet.setOnClickListener {
@@ -116,7 +136,6 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
                 createFilterBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
             else {
                 createFilterBottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
-
                 initAddFilterSheet()
             }
         }
@@ -127,7 +146,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
         }
 
         binding.captureButton.setOnClickListener {
-
+            textCanvasView.capture()
         }
 
         binding.layoutAddFilterBottomSheet.charactersInput.addTextChangedListener {
@@ -135,7 +154,11 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
         }
 
         binding.layoutAddFilterBottomSheet.sortChars.setOnClickListener {
-            binding.layoutAddFilterBottomSheet.charactersInput.setText(textGraphicsSorter.sortTextByBrightness(getDensityFromInput()))
+            binding.layoutAddFilterBottomSheet.charactersInput.setText(
+                textGraphicsSorter.sortTextByBrightness(
+                    getDensityFromInput()
+                )
+            )
         }
 
         binding.layoutAddFilterBottomSheet.reversChars.setOnClickListener {
@@ -143,7 +166,8 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
         }
 
         binding.layoutAddFilterBottomSheet.bgColorDisp.setOnClickListener {
-            val currColor = (binding.layoutAddFilterBottomSheet.bgColorDisp.background as ColorDrawable).color
+            val currColor =
+                (binding.layoutAddFilterBottomSheet.bgColorDisp.background as ColorDrawable).color
             fetchColor(currColor, onColorSelect = {
                 binding.layoutAddFilterBottomSheet.bgColorDisp.setBackgroundColor(it)
                 applyCustomFilterEnteredDetails()
@@ -154,7 +178,8 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
         }
 
         binding.layoutAddFilterBottomSheet.fgColorDisp.setOnClickListener {
-            val currColor = (binding.layoutAddFilterBottomSheet.fgColorDisp.background as ColorDrawable).color
+            val currColor =
+                (binding.layoutAddFilterBottomSheet.fgColorDisp.background as ColorDrawable).color
             fetchColor(currColor, onColorSelect = {
                 binding.layoutAddFilterBottomSheet.fgColorDisp.setBackgroundColor(it)
                 applyCustomFilterEnteredDetails()
@@ -164,6 +189,79 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
             })
         }
 
+        binding.layoutAddFilterBottomSheet.radioGroup.setOnCheckedChangeListener { _, _ ->
+            applyCustomFilterEnteredDetails()
+        }
+
+        binding.layoutAddFilterBottomSheet.add.setOnClickListener {
+            viewModel.addCustomFilters(viewModel.bottomSheetAddCustomFilterState.value)
+            createFilterBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+        }
+
+        val bottomSheetCallBack = object : BottomSheetBehavior.BottomSheetCallback() {
+            override fun onStateChanged(bottomSheet: View, newState: Int) {
+                if (newState == BottomSheetBehavior.STATE_HIDDEN)
+                    hideKeyboard(binding.root)
+            }
+
+            override fun onSlide(bottomSheet: View, slideOffset: Float) {
+
+            }
+
+        }
+
+        bottomSheetBehavior.addBottomSheetCallback(bottomSheetCallBack)
+        createFilterBottomSheetBehavior.addBottomSheetCallback(bottomSheetCallBack)
+
+        textCanvasView.setOnTextCaptureListener(object : TextCanvasView.OnTextCaptureListener {
+            override fun onCancel() {
+                capturedChars.clear()
+                revertPanelButtons()
+            }
+
+            override fun onCapture(drawList: ArrayList<ArrayList<TextBitmapFilter.Companion.CharData>>) {
+                capturedChars.clear()
+                capturedChars.addAll(drawList)
+                changePanelButtonsToConfirm()
+            }
+        })
+
+    }
+
+    private fun changePanelButtonsToConfirm() {
+        binding.flipCameraButton.setImageDrawable(
+            ContextCompat.getDrawable(
+                this,
+                R.drawable.round_close_24
+            )
+        )
+        binding.filterButton.setImageDrawable(
+            ContextCompat.getDrawable(
+                this,
+                R.drawable.baseline_share_24
+            )
+        )
+    }
+
+    private fun revertPanelButtons() {
+        binding.flipCameraButton.setImageDrawable(
+            ContextCompat.getDrawable(
+                this,
+                R.drawable.baseline_flip_camera_android_24
+            )
+        )
+        binding.filterButton.setImageDrawable(
+            ContextCompat.getDrawable(
+                this,
+                R.drawable.baseline_filter_24
+            )
+        )
+    }
+
+    private fun hideKeyboard(v: View) {
+        val inputMethodManager: InputMethodManager =
+            getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        inputMethodManager.hideSoftInputFromWindow(v.applicationWindowToken, 0)
     }
 
     private fun initAddFilterSheet() {
@@ -177,9 +275,30 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
         viewModel.bottomSheetAddCustomFilterState(FilterSpecs().apply {
             val density = getDensityFromInput()
 
-            this.density = density
-            this.fgColors = (binding.layoutAddFilterBottomSheet.fgColorDisp.background as ColorDrawable).color
-            this.colorBg = (binding.layoutAddFilterBottomSheet.bgColorDisp.background as ColorDrawable).color
+            binding.layoutAddFilterBottomSheet.let {
+                this.density = density
+                this.fgColor = (it.fgColorDisp.background as ColorDrawable).color
+                this.bgColor = (it.bgColorDisp.background as ColorDrawable).color
+
+                this.fgColorType = when (it.radioGroup.checkedRadioButtonId) {
+                    R.id.radio_button_none -> {
+                        it.fgColorDisp.visibility = View.VISIBLE
+                        TextBitmapFilter.COLOR_TYPE_NONE
+                    }
+                    R.id.radio_button_ansi -> {
+                        it.fgColorDisp.visibility = View.INVISIBLE
+                        TextBitmapFilter.COLOR_TYPE_ANSI
+                    }
+                    R.id.radio_button_org -> {
+                        it.fgColorDisp.visibility = View.INVISIBLE
+                        TextBitmapFilter.COLOR_TYPE_ORIGINAL
+                    }
+                    else -> {
+                        it.fgColorDisp.visibility = View.VISIBLE
+                        TextBitmapFilter.COLOR_TYPE_NONE
+                    }
+                }
+            }
         })
     }
 
@@ -189,7 +308,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
                 it.toString()
             else
                 null
-        }?:DEFAULT_CUSTOM_CHARS
+        } ?: DEFAULT_CUSTOM_CHARS
 
 
     private fun loadCamera() {
@@ -202,7 +321,11 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
         }
     }
 
-    private fun fetchColor(currentColor: Int, onColorSelect:(color:Int)->Unit, onCancel:()->Unit){
+    private fun fetchColor(
+        currentColor: Int,
+        onColorSelect: (color: Int) -> Unit,
+        onCancel: () -> Unit
+    ) {
         ColorPickerDialogBuilder
             .with(this)
             .setTitle("Choose color")
@@ -245,21 +368,32 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
         createFilterBottomSheetBehavior = BottomSheetBehavior.from(binding.filterBottomSheet)
         createFilterBottomSheetBehavior.isGestureInsetBottomIgnored = true
 
-        binding.layoutFilterBottomSheet.filterItems.layoutManager = LinearLayoutManager(this@MainActivity,
-            LinearLayoutManager.HORIZONTAL,false)
+        binding.layoutFilterBottomSheet.filterItems.layoutManager = LinearLayoutManager(
+            this@MainActivity,
+            LinearLayoutManager.HORIZONTAL, false
+        )
 
-        getSampleBitmap()?.let { bitmap->
-            binding.imageView.setImageBitmap(bitmap)
+        binding.layoutFilterBottomSheet.customFilterItems.layoutManager = LinearLayoutManager(
+            this@MainActivity,
+            LinearLayoutManager.HORIZONTAL, false
+        )
 
-            binding.layoutFilterBottomSheet.filterItems.adapter = FiltersRecyclerAdapter(this,bitmap).also {
-                it.submitList(TextBitmapFilter.listOfFilters)
-            }
+
+        getSampleBitmap()?.let { bitmap ->
+
+            customFiltersRecyclerAdapter = CustomFiltersRecyclerAdapter(this, bitmap)
+            binding.layoutFilterBottomSheet.customFilterItems.adapter = customFiltersRecyclerAdapter
+            binding.layoutFilterBottomSheet.filterItems.adapter =
+                FiltersRecyclerAdapter(this, bitmap).also {
+                    it.submitList(TextBitmapFilter.listOfFilters)
+                }
+            viewModel.getCustomFilters()
         }
 
     }
 
     private fun getSampleBitmap(): Bitmap? {
-        sampleBitmap = sampleBitmap?:getBitmapFromAsset(this, BITMAP_PATH)
+        sampleBitmap = sampleBitmap ?: getBitmapFromAsset(this, BITMAP_PATH)
         return sampleBitmap
     }
 
@@ -323,6 +457,14 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener {
 
     override fun onItemClicked(textBitmapFilter: TextBitmapFilter) {
         textCanvasView.filter = textBitmapFilter
+    }
+
+    override fun onCustomItemClicked(filterSpecs: FilterSpecs) {
+        textCanvasView.filter = TextBitmapFilter.Custom(filterSpecs)
+    }
+
+    override fun onCustomDeleteClicked(filterSpecs: FilterSpecs) {
+        viewModel.removeCustomFilter(filterSpecs)
     }
 
 }

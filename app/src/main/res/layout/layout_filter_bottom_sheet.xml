@@ -2,6 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:background="@color/menu_bg_color"
     android:orientation="vertical">
 
@@ -21,30 +22,25 @@
             android:textSize="16sp"
             android:textColor="@color/menu_fg_color"/>
 
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/close"
-            android:id="@+id/closeFilterSheet"/>
+        <ImageButton
+            android:id="@+id/closeFilterSheet"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="@android:color/transparent"
+            android:layout_gravity="end|center_vertical"
+            android:src="@drawable/round_close_24"
+            app:tint="@color/menu_fg_color"/>
 
     </LinearLayout>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height=".5dp"
-        android:background="@color/menu_fg_color"
-        android:layout_marginBottom="5dp"/>
+    <include layout="@layout/separator"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/filterItems"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height=".5dp"
-        android:background="@color/menu_fg_color"
-        android:layout_marginBottom="5dp"/>
+    <include layout="@layout/separator"/>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -70,11 +66,7 @@
 
     </LinearLayout>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height=".5dp"
-        android:background="@color/menu_fg_color"
-        android:layout_marginBottom="5dp"/>
+    <include layout="@layout/separator"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/customFilterItems"

@@ -2,13 +2,20 @@ package com.akhilasdeveloper.asciicamera.repository
 
 import androidx.datastore.preferences.core.intPreferencesKey
 import com.akhilasdeveloper.asciicamera.repository.datastore.DataStoreFunctions
+import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsDao
+import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsTable
 import com.akhilasdeveloper.asciicamera.util.Constants.DEFAULT_BACK_CAMERA
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class Repository
 @Inject constructor(
-    private val dataStore: DataStoreFunctions
+    private val dataStore: DataStoreFunctions,
+    private val filterSpecsDao: FilterSpecsDao
 ) {
 
     private val LENS_VALUE = intPreferencesKey("LENS_VALUE")
@@ -22,4 +29,18 @@ class Repository
 
     suspend fun getCurrentLensRaw() =
         dataStore.getValueFromPreferencesStore(LENS_VALUE) ?: DEFAULT_BACK_CAMERA
+
+    suspend fun addCustomFilter(filterSpecsTable: FilterSpecsTable) {
+        withContext(Dispatchers.IO){
+            filterSpecsDao.addFilter(filterSpecsTable)
+        }
+    }
+
+    suspend fun deleteCustomFilter(filterSpecsTable: FilterSpecsTable) {
+        withContext(Dispatchers.IO){
+            filterSpecsDao.deleteFilter(filterSpecsTable)
+        }
+    }
+
+    fun getCustomFilters() = filterSpecsDao.getFilters().flowOn(Dispatchers.IO)
 }

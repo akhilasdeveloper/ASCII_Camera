@@ -10,8 +10,6 @@ import androidx.camera.core.ImageProxy
 import com.akhilasdeveloper.asciicamera.R
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.CharData
-import com.akhilasdeveloper.asciicamera.util.TextGraphicsSorter
-import timber.log.Timber
 import java.nio.ByteBuffer
 
 
@@ -55,6 +53,7 @@ class TextCanvasView(
     private var paint = Paint().apply {
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD);
     }
+    private var mListener: OnTextCaptureListener? = null
 
     var textCharSize = 15f
         set(value) {
@@ -77,6 +76,8 @@ class TextCanvasView(
     private var bitmapWidth = 0
     private var bitmapHeight = 0
     var inverse = false
+    var isCapturedState = false
+        private set
     var rotateDegree: Float? = null
     private val textBounds: Rect = Rect()
 
@@ -101,13 +102,28 @@ class TextCanvasView(
         }
 
     private fun draw() {
-        scaledBitmap?.let {
-            drawList.clear()
-            drawList.addAll((filter?:TextBitmapFilter.WhiteOnBlack).bitmapToText(it))
-            calculateStartVal()
-            bgColor = drawList.first().first().colorBg
-            postInvalidate()
-        }
+        if (!isCapturedState)
+            scaledBitmap?.let {
+                drawList.clear()
+                drawList.addAll((filter ?: TextBitmapFilter.WhiteOnBlack).bitmapToText(it))
+                calculateStartVal()
+                bgColor = drawList.first().first().colorBg
+                postInvalidate()
+            }
+    }
+
+    fun capture() {
+        isCapturedState = true
+        mListener?.onCapture(drawList)
+    }
+
+    fun cancelCapture() {
+        mListener?.onCancel()
+        isCapturedState = false
+    }
+
+    fun setOnTextCaptureListener(eventListener: OnTextCaptureListener) {
+        mListener = eventListener
     }
 
     private fun scaleBitmap() {
@@ -128,7 +144,6 @@ class TextCanvasView(
         xStartVal = (width - (bitmapWidth * textCharSize)) / 2f
         yStartVal = (height - (bitmapHeight * textCharSize)) / 2f
 
-        Timber.d("xStartVal:yStartVal ${(width - (bitmapWidth * textCharSize)) / 2f}:${(height - (bitmapHeight * textCharSize)) / 2f}")
     }
 
     fun generateTextViewFromImageProxy(imageProxy: ImageProxy) {
@@ -238,6 +253,11 @@ class TextCanvasView(
         this,
         Resources.getSystem().displayMetrics
     )
+
+    interface OnTextCaptureListener {
+        fun onCancel()
+        fun onCapture(drawList: ArrayList<ArrayList<CharData>>)
+    }
 
 }
 

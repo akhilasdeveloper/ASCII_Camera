@@ -12,23 +12,6 @@
         android:gravity="bottom"
         android:orientation="vertical">
 
-        <androidx.coordinatorlayout.widget.CoordinatorLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="20dp"
-            android:background="@color/panel_bg_color">
-
-            <androidx.appcompat.widget.AppCompatImageButton
-                android:id="@+id/filter_button"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_gravity="end|center_vertical"
-                android:src="@drawable/baseline_filter_24"
-                android:tint="@color/panel_fg_color"
-                android:background="@drawable/cam_flip_button_state"/>
-
-        </androidx.coordinatorlayout.widget.CoordinatorLayout>
-
         <com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
             android:id="@+id/gridViewHolder"
             android:layout_width="match_parent"
@@ -57,6 +40,15 @@
                 android:layout_height="32dp"
                 android:layout_gravity="start|center_vertical"
                 android:src="@drawable/baseline_flip_camera_android_24"
+                android:tint="@color/panel_fg_color"
+                android:background="@drawable/cam_flip_button_state"/>
+
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/filter_button"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="end|center_vertical"
+                android:src="@drawable/baseline_filter_24"
                 android:tint="@color/panel_fg_color"
                 android:background="@drawable/cam_flip_button_state"/>
 

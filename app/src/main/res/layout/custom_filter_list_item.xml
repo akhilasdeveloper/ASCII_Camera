@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:layout_margin="5dp"
+    android:background="@color/menu_bg_color">
+
+    <com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
+        android:id="@+id/filterItemImage"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        app:textSize="1sp"
+        tools:ignore="SmallSp"
+        android:layout_margin="2dp"/>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="2dp">
+
+        <ImageButton
+            android:id="@+id/delete_button"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="@android:color/transparent"
+            android:layout_gravity="end|center_vertical"
+            android:src="@drawable/baseline_delete_24"
+            app:tint="@color/menu_fg_color"/>
+
+    </LinearLayout>
+
+
+</LinearLayout>

@@ -10,6 +10,10 @@ sealed class TextBitmapFilter {
 
 
     companion object {
+
+        const val COLOR_TYPE_NONE = -1
+        const val COLOR_TYPE_ANSI = -2
+        const val COLOR_TYPE_ORIGINAL = -3
         data class CharData(
             val char: Char,
             val colorFg: Int,
@@ -17,9 +21,11 @@ sealed class TextBitmapFilter {
         )
 
         data class FilterSpecs(
+            var id: Long? = null,
             var density: String = DEFAULT_CUSTOM_CHARS,
-            var fgColors: Int = Color.WHITE,
-            var colorBg: Int = Color.BLACK
+            var fgColor: Int = Color.WHITE,
+            var fgColorType: Int = COLOR_TYPE_NONE,
+            var bgColor: Int = Color.BLACK
         )
 
         fun getFilterByID(id: Int): TextBitmapFilter = when (id) {
@@ -166,7 +172,7 @@ sealed class TextBitmapFilter {
     object ANSI : TextBitmapFilter() {
 
 
-        private const val fact = 4 / 10f
+        private const val fact = .5
 
         override val id: Int
             get() = -4
@@ -178,14 +184,19 @@ sealed class TextBitmapFilter {
         }
 
         override val density: String
-            get() = "Ñ@#"
+            get() = ".,:oOB@"
 
         override fun fgColors(pixel: Int): Int = toANSI(pixel)
 
-        private fun toANSI(pixel: Int): Int {
-            val r = if (Color.red(pixel) / 255f >= fact) 255 else 0
-            val g = if (Color.green(pixel) / 255f >= fact) 255 else 0
-            val b = if (Color.blue(pixel) / 255f >= fact) 255 else 0
+        fun toANSI(pixel: Int): Int {
+
+            val rFact = Color.red(pixel) / 255f
+            val gFact = Color.green(pixel) / 255f
+            val bFact = Color.blue(pixel) / 255f
+
+            val r = if (rFact >= fact) 255 else 0
+            val g = if (gFact >= fact) 255 else 0
+            val b = if (bFact >= fact) 255 else 0
 
             return Color.argb(255, r, g, b)
         }
@@ -211,9 +222,22 @@ sealed class TextBitmapFilter {
             get() = specs.density
 
 
-        override fun fgColors(pixel: Int): Int = specs.fgColors
+        override fun fgColors(pixel: Int): Int = when(specs.fgColorType){
+            COLOR_TYPE_NONE -> {
+                specs.fgColor
+            }
+            COLOR_TYPE_ANSI -> {
+                ANSI.toANSI(pixel)
+            }
+            COLOR_TYPE_ORIGINAL -> {
+                pixel
+            }
+            else ->{
+                specs.fgColor
+            }
+        }
 
-        override fun bgColor(pixel: Int): Int = specs.colorBg
+        override fun bgColor(pixel: Int): Int = specs.bgColor
     }
 }
 
