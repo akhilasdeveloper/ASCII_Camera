@@ -8,6 +8,7 @@ import com.akhilasdeveloper.asciicamera.repository.room.ASCIIDatabase
 import com.akhilasdeveloper.asciicamera.util.ColorSorter
 import com.akhilasdeveloper.asciicamera.util.Constants.ASCII_DB_NAME
 import com.akhilasdeveloper.asciicamera.util.TextGraphicsSorter
+import com.akhilasdeveloper.asciicamera.util.Utilities
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,6 +36,12 @@ object AppModule {
     @Provides
     fun provideDataStoreFunctions( @ApplicationContext app: Context): DataStoreFunctions {
         return DataStoreFunctionsImpl(app)
+    }
+
+    @Singleton
+    @Provides
+    fun provideUtilities( @ApplicationContext app: Context): Utilities {
+        return Utilities(app)
     }
 
     @Singleton

@@ -3,11 +3,13 @@ package com.akhilasdeveloper.asciicamera.ui
 import android.Manifest
 import android.content.Context
 import android.content.DialogInterface
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.ColorDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -25,7 +27,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.akhilasdeveloper.asciicamera.R
 import com.akhilasdeveloper.asciicamera.databinding.ActivityMainBinding
-import com.akhilasdeveloper.asciicamera.ui.fragments.PreviewFragment
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.CustomFiltersRecyclerAdapter
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.FiltersRecyclerAdapter
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerCustomFiltersClickListener
@@ -36,6 +37,7 @@ import com.akhilasdeveloper.asciicamera.util.Constants.DEFAULT_CUSTOM_CHARS
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
 import com.akhilasdeveloper.asciicamera.util.TextGraphicsSorter
+import com.akhilasdeveloper.asciicamera.util.Utilities
 import com.akhilasdeveloper.asciicamera.util.observe
 import com.flask.colorpicker.ColorPickerView
 import com.flask.colorpicker.OnColorSelectedListener
@@ -43,7 +45,9 @@ import com.flask.colorpicker.builder.ColorPickerClickListener
 import com.flask.colorpicker.builder.ColorPickerDialogBuilder
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.IOException
 import java.io.InputStream
@@ -67,8 +71,12 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     @Inject
     lateinit var textGraphicsSorter: TextGraphicsSorter
+    @Inject
+    lateinit var utilities: Utilities
     lateinit var customFiltersRecyclerAdapter: CustomFiltersRecyclerAdapter
-    private var capturedChars: ArrayList<ArrayList<TextBitmapFilter.Companion.CharData>> = arrayListOf()
+    private var capturedBitmap: Bitmap? = null
+    private var capturedChars: ArrayList<ArrayList<TextBitmapFilter.Companion.CharData>> =
+        arrayListOf()
 
     private lateinit var viewModel: MainViewModel
     private var sampleBitmap: Bitmap? = null
@@ -108,14 +116,15 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     private fun setClickListeners() {
         binding.flipCameraButton.setOnClickListener {
-            if (textCanvasView.isCapturedState)
-                textCanvasView.cancelCapture()
-            else
+            if (textCanvasView.isCapturedState) {
+                textCanvasView.continueStream()
+            } else
                 viewModel.toggleCamera()
         }
         binding.filterButton.setOnClickListener {
-            if (textCanvasView.isCapturedState)
-                textCanvasView.cancelCapture()
+            if (textCanvasView.isCapturedState) {
+                showShareOption()
+            }
             else {
                 if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
                     bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
@@ -214,18 +223,39 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         createFilterBottomSheetBehavior.addBottomSheetCallback(bottomSheetCallBack)
 
         textCanvasView.setOnTextCaptureListener(object : TextCanvasView.OnTextCaptureListener {
-            override fun onCancel() {
+            override fun continueStream() {
                 capturedChars.clear()
+                capturedBitmap = null
                 revertPanelButtons()
             }
 
-            override fun onCapture(drawList: ArrayList<ArrayList<TextBitmapFilter.Companion.CharData>>) {
+            override fun onCapture(drawList: ArrayList<ArrayList<TextBitmapFilter.Companion.CharData>>, bitmap: Bitmap?) {
                 capturedChars.clear()
                 capturedChars.addAll(drawList)
+                capturedBitmap = bitmap
                 changePanelButtonsToConfirm()
+
             }
         })
 
+    }
+
+    private fun showShareOption() {
+        shareAsImage()
+    }
+
+    private fun shareAsImage() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val imageUri: Uri? = utilities.toImageURI(capturedBitmap)
+            withContext(Dispatchers.Main) {
+                val shareIntent: Intent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    putExtra(Intent.EXTRA_STREAM, imageUri)
+                    type = "image/jpeg"
+                }
+                startActivity(Intent.createChooser(shareIntent, "Share image via"))
+            }
+        }
     }
 
     private fun changePanelButtonsToConfirm() {

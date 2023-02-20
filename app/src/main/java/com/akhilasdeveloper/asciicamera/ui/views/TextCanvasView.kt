@@ -7,6 +7,7 @@ import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
 import androidx.camera.core.ImageProxy
+import androidx.core.view.drawToBitmap
 import com.akhilasdeveloper.asciicamera.R
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.CharData
@@ -114,11 +115,11 @@ class TextCanvasView(
 
     fun capture() {
         isCapturedState = true
-        mListener?.onCapture(drawList)
+        mListener?.onCapture(drawList, drawToBitmap(Bitmap.Config.ARGB_8888))
     }
 
-    fun cancelCapture() {
-        mListener?.onCancel()
+    fun continueStream() {
+        mListener?.continueStream()
         isCapturedState = false
     }
 
@@ -218,34 +219,34 @@ class TextCanvasView(
         )
     }
 
-    override fun onDraw(canvas: Canvas?) {
-        canvas?.apply {
+    private fun drawTextChars(canvas: Canvas?){
+        canvas?.drawColor(bgColor)
 
-            setBackgroundColor(bgColor)
-
-            var xVal = xStartVal
-            var yVal = yStartVal
-            if (drawList.isNotEmpty())
-                paint.getTextBounds(drawList.first().first().toString(), 0, 1, textBounds);
-            for (y in 0 until drawList.size) {
-                for (x in 0 until drawList[0].size) {
-                    drawList[y][x].let {
-                        val string = it.char.toString()
-                        paint.color = it.colorFg
-                        canvas.drawText(
-                            string,
-                            (textCharSize / 2f) - textBounds.exactCenterX() + xVal,
-                            (textCharSize / 2f) - textBounds.exactCenterY() + yVal,
-                            paint
-                        )
-                    }
-                    xVal += textCharSize
+        var xVal = xStartVal
+        var yVal = yStartVal
+        if (drawList.isNotEmpty())
+            paint.getTextBounds(drawList.first().first().toString(), 0, 1, textBounds);
+        for (y in 0 until drawList.size) {
+            for (x in 0 until drawList[0].size) {
+                drawList[y][x].let {
+                    val string = it.char.toString()
+                    paint.color = it.colorFg
+                    canvas?.drawText(
+                        string,
+                        (textCharSize / 2f) - textBounds.exactCenterX() + xVal,
+                        (textCharSize / 2f) - textBounds.exactCenterY() + yVal,
+                        paint
+                    )
                 }
-                xVal = xStartVal
-                yVal += textCharSize
+                xVal += textCharSize
             }
-
+            xVal = xStartVal
+            yVal += textCharSize
         }
+    }
+
+    override fun onDraw(canvas: Canvas?) {
+        drawTextChars(canvas)
     }
 
     private fun Float.spToPx(): Float = TypedValue.applyDimension(
@@ -255,8 +256,8 @@ class TextCanvasView(
     )
 
     interface OnTextCaptureListener {
-        fun onCancel()
-        fun onCapture(drawList: ArrayList<ArrayList<CharData>>)
+        fun continueStream()
+        fun onCapture(drawList: ArrayList<ArrayList<CharData>>, bitmap: Bitmap?)
     }
 
 }
