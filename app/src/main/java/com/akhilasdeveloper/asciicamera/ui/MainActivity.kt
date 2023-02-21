@@ -8,12 +8,17 @@ import android.content.pm.PackageManager
 import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -71,6 +76,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     @Inject
     lateinit var textGraphicsSorter: TextGraphicsSorter
+
     @Inject
     lateinit var utilities: Utilities
     lateinit var customFiltersRecyclerAdapter: CustomFiltersRecyclerAdapter
@@ -80,6 +86,27 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     private lateinit var viewModel: MainViewModel
     private var sampleBitmap: Bitmap? = null
+
+    private var requestGallery: ActivityResultLauncher<Intent> = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        it.data?.data?.let { imageUri ->
+
+            val bitmap = if (Build.VERSION.SDK_INT < 28) {
+                MediaStore.Images.Media.getBitmap(
+                    this.contentResolver,
+                    imageUri
+                )
+            } else {
+                val source = ImageDecoder.createSource(this.contentResolver, imageUri)
+                ImageDecoder.decodeBitmap(source)
+            }
+
+            textCanvasView.generateTextViewFromBitmap(
+                bitmap.copy(Bitmap.Config.ARGB_8888, true)
+            )
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -124,8 +151,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         binding.filterButton.setOnClickListener {
             if (textCanvasView.isCapturedState) {
                 showShareOption()
-            }
-            else {
+            } else {
                 if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
                     bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
                 else {
@@ -229,7 +255,10 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
                 revertPanelButtons()
             }
 
-            override fun onCapture(drawList: ArrayList<ArrayList<TextBitmapFilter.Companion.CharData>>, bitmap: Bitmap?) {
+            override fun onCapture(
+                drawList: ArrayList<ArrayList<TextBitmapFilter.Companion.CharData>>,
+                bitmap: Bitmap?
+            ) {
                 capturedChars.clear()
                 capturedChars.addAll(drawList)
                 capturedBitmap = bitmap
@@ -237,6 +266,12 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
             }
         })
+
+        binding.galleryButton.setOnClickListener {
+            val galleryIntent = Intent(Intent.ACTION_PICK)
+            galleryIntent.data = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            requestGallery.launch(galleryIntent)
+        }
 
     }
 
@@ -466,7 +501,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     private fun generateTextView(imageProxy: ImageProxy) {
         lifecycleScope.launch {
-            textCanvasView.generateTextViewFromImageProxy(imageProxy)
+//            textCanvasView.generateTextViewFromImageProxy(imageProxy)
         }
     }
 

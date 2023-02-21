@@ -44,22 +44,26 @@
                 android:background="@drawable/cam_flip_button_state"/>
 
             <androidx.appcompat.widget.AppCompatImageButton
-                android:id="@+id/filter_button"
+                android:id="@+id/gallery_button"
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:layout_gravity="end|center_vertical"
-                android:src="@drawable/baseline_filter_24"
+                android:src="@drawable/baseline_add_photo_alternate_24"
                 android:tint="@color/panel_fg_color"
+                android:background="@drawable/cam_flip_button_state" />
+
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/filter_button"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="start|center_vertical"
+                android:src="@drawable/baseline_color_lens_24"
+                android:tint="@color/panel_fg_color"
+                android:layout_marginStart="42dp"
                 android:background="@drawable/cam_flip_button_state"/>
 
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
     </LinearLayout>
-
-    <ImageView
-        android:id="@+id/imageView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:contentDescription="@string/image_preview" />
 
     <androidx.core.widget.NestedScrollView
         android:id="@+id/bottom_sheet"

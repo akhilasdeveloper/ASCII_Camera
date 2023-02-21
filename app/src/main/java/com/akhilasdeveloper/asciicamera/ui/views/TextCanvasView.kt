@@ -12,6 +12,7 @@ import com.akhilasdeveloper.asciicamera.R
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.CharData
 import java.nio.ByteBuffer
+import kotlin.math.ceil
 
 
 class TextCanvasView(
@@ -51,8 +52,8 @@ class TextCanvasView(
         }
     }
 
-    private var paint = Paint().apply {
-        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD);
+    private var paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = Typeface.DEFAULT_BOLD
     }
     private var mListener: OnTextCaptureListener? = null
 
@@ -84,8 +85,10 @@ class TextCanvasView(
 
     private var bitmap: Bitmap? = null
         set(value) {
-            field = value
-            scaleBitmap()
+            if (!isCapturedState) {
+                field = value
+                scaleBitmap()
+            }
         }
 
     private var scaledBitmap: Bitmap? = null
@@ -103,19 +106,30 @@ class TextCanvasView(
         }
 
     private fun draw() {
-        if (!isCapturedState)
-            scaledBitmap?.let {
-                drawList.clear()
-                drawList.addAll((filter ?: TextBitmapFilter.WhiteOnBlack).bitmapToText(it))
-                calculateStartVal()
-                bgColor = drawList.first().first().colorBg
-                postInvalidate()
-            }
+        scaledBitmap?.let {
+            drawList.clear()
+            drawList.addAll((filter ?: TextBitmapFilter.WhiteOnBlack).bitmapToText(it))
+            calculateStartVal()
+            bgColor = drawList.first().first().colorBg
+            postInvalidate()
+        }
     }
 
     fun capture() {
         isCapturedState = true
-        mListener?.onCapture(drawList, drawToBitmap(Bitmap.Config.ARGB_8888))
+        val capturedBitmap: Bitmap = captureBitmap()
+        mListener?.onCapture(drawList, capturedBitmap)
+    }
+
+    private fun captureBitmap(): Bitmap {
+        val bmp = Bitmap.createBitmap(
+            drawList.first().size * textCharSize.toInt(),
+            drawList.size * textCharSize.toInt(),
+            Bitmap.Config.ARGB_8888
+        )
+        val canvas = Canvas(bmp)
+        drawTextChars(canvas, 0f, 0f)
+        return bmp
     }
 
     fun continueStream() {
@@ -219,16 +233,30 @@ class TextCanvasView(
         )
     }
 
-    private fun drawTextChars(canvas: Canvas?){
-        canvas?.drawColor(bgColor)
+    private fun drawTextChars(
+        canvas: Canvas?,
+        xStart: Float = xStartVal,
+        yStart: Float = yStartVal
+    ) {
 
-        var xVal = xStartVal
-        var yVal = yStartVal
-        if (drawList.isNotEmpty())
+        var xVal = xStart
+        var yVal = yStart
+
+        if (drawList.isNotEmpty()) {
             paint.getTextBounds(drawList.first().first().toString(), 0, 1, textBounds);
-        for (y in 0 until drawList.size) {
-            for (x in 0 until drawList[0].size) {
-                drawList[y][x].let {
+
+            paint.color = bgColor
+            canvas?.drawRect(
+                xVal,
+                yVal,
+                drawList.first().size * textCharSize + xVal,
+                drawList.size * textCharSize + yVal,
+                paint
+            )
+        }
+        for (x in 0 until drawList.size) {
+            for (y in 0 until drawList[0].size) {
+                drawList[x][y].let {
                     val string = it.char.toString()
                     paint.color = it.colorFg
                     canvas?.drawText(

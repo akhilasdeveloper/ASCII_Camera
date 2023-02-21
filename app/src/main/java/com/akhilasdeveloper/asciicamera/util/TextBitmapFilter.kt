@@ -120,7 +120,7 @@ sealed class TextBitmapFilter {
         }
 
         override val density: String
-            get() = "@BOo:."
+            get() = "@BOo:..  "
 
         override fun fgColors(pixel: Int): Int = Color.WHITE
 
@@ -141,7 +141,7 @@ sealed class TextBitmapFilter {
         }
 
         override val density: String
-            get() = ".:oOB@"
+            get() = "  ..:oOB@"
 
         override fun fgColors(pixel: Int): Int = Color.BLACK
 
@@ -172,7 +172,7 @@ sealed class TextBitmapFilter {
     object ANSI : TextBitmapFilter() {
 
 
-        private const val fact = .5
+        private const val ansiiFact = .9f
 
         override val id: Int
             get() = -4
@@ -184,19 +184,24 @@ sealed class TextBitmapFilter {
         }
 
         override val density: String
-            get() = ".,:oOB@"
+            get() = "@BOo."
 
         override fun fgColors(pixel: Int): Int = toANSI(pixel)
 
         fun toANSI(pixel: Int): Int {
 
-            val rFact = Color.red(pixel) / 255f
-            val gFact = Color.green(pixel) / 255f
-            val bFact = Color.blue(pixel) / 255f
+            val red = Color.red(pixel)
+            val green = Color.green(pixel)
+            val blue = Color.blue(pixel)
 
-            val r = if (rFact >= fact) 255 else 0
-            val g = if (gFact >= fact) 255 else 0
-            val b = if (bFact >= fact) 255 else 0
+            val maxRG: Int = if (red > green) red else green
+            val maxColor = if (blue > maxRG) blue else maxRG
+
+            val fact = maxColor * ansiiFact
+
+            val r = if (red >= fact) 255 else 0
+            val g = if (green >= fact) 255 else 0
+            val b = if (blue >= fact) 255 else 0
 
             return Color.argb(255, r, g, b)
         }
