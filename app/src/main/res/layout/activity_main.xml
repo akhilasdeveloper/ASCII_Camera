@@ -65,6 +65,11 @@
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
     </LinearLayout>
 
+    <ImageView
+        android:layout_width="128dp"
+        android:layout_height="128dp"
+        android:id="@+id/image"/>
+
     <androidx.core.widget.NestedScrollView
         android:id="@+id/bottom_sheet"
         android:layout_width="match_parent"

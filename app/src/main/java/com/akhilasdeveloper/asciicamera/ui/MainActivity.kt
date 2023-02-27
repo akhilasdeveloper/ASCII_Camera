@@ -9,6 +9,7 @@ import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
+import android.graphics.Matrix
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
@@ -37,13 +38,10 @@ import com.akhilasdeveloper.asciicamera.ui.recyclerview.FiltersRecyclerAdapter
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerCustomFiltersClickListener
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerFiltersClickListener
 import com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
+import com.akhilasdeveloper.asciicamera.util.*
 import com.akhilasdeveloper.asciicamera.util.Constants.BITMAP_PATH
 import com.akhilasdeveloper.asciicamera.util.Constants.DEFAULT_CUSTOM_CHARS
-import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
-import com.akhilasdeveloper.asciicamera.util.TextGraphicsSorter
-import com.akhilasdeveloper.asciicamera.util.Utilities
-import com.akhilasdeveloper.asciicamera.util.observe
 import com.flask.colorpicker.ColorPickerView
 import com.flask.colorpicker.OnColorSelectedListener
 import com.flask.colorpicker.builder.ColorPickerClickListener
@@ -56,6 +54,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.IOException
 import java.io.InputStream
+import java.nio.ByteBuffer
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import javax.inject.Inject
@@ -64,6 +63,14 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     RecyclerCustomFiltersClickListener {
+
+    companion object {
+        init {
+            System.loadLibrary("asciicamera")
+        }
+    }
+
+    external fun Test(): String
 
     private var _binding: ActivityMainBinding? = null
     private val binding get() = _binding!!
@@ -86,6 +93,8 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     private lateinit var viewModel: MainViewModel
     private var sampleBitmap: Bitmap? = null
+
+    private val asciiGenerator:AsciiGenerator = AsciiGenerator.BlackOnWhite
 
     private var requestGallery: ActivityResultLauncher<Intent> = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -112,6 +121,12 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         super.onCreate(savedInstanceState)
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        Timber.d("Test cpp ${Test()}")
+
+        asciiGenerator.generatedBitmapState.observe(lifecycleScope){
+            binding.image.setImageBitmap(it)
+        }
 
         init()
         setClickListeners()
@@ -501,7 +516,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     private fun generateTextView(imageProxy: ImageProxy) {
         lifecycleScope.launch {
-//            textCanvasView.generateTextViewFromImageProxy(imageProxy)
+            asciiGenerator.imageProxyToTextBitmap(imageProxy)
         }
     }
 
@@ -530,6 +545,15 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     override fun onCustomDeleteClicked(filterSpecs: FilterSpecs) {
         viewModel.removeCustomFilter(filterSpecs)
+    }
+
+    private fun ImageProxy.toByteArray(): ByteArray? {
+        val planes = planes
+        val buffer: ByteBuffer = planes[0].buffer
+        val byteArray = ByteArray(width * (height + height / 2))
+        buffer.get(byteArray, 0, width * height)
+
+        return byteArray
     }
 
 }

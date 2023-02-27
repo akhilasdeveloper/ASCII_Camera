@@ -1,16 +1,21 @@
 package com.akhilasdeveloper.asciicamera.util
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
+import android.text.TextPaint
+import androidx.camera.core.ImageProxy
 import androidx.core.graphics.ColorUtils
-import androidx.core.graphics.get
 import com.akhilasdeveloper.asciicamera.util.Constants.DEFAULT_CUSTOM_CHARS
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import timber.log.Timber
+import java.nio.ByteBuffer
 
-sealed class TextBitmapFilter {
+sealed class AsciiGenerator {
 
 
     companion object {
@@ -18,6 +23,7 @@ sealed class TextBitmapFilter {
         const val COLOR_TYPE_NONE = -1
         const val COLOR_TYPE_ANSI = -2
         const val COLOR_TYPE_ORIGINAL = -3
+
         data class CharData(
             val char: Char,
             val colorFg: Int,
@@ -32,7 +38,7 @@ sealed class TextBitmapFilter {
             var bgColor: Int = Color.BLACK
         )
 
-        fun getFilterByID(id: Int): TextBitmapFilter = when (id) {
+        fun getFilterByID(id: Int): AsciiGenerator = when (id) {
             BlackOnWhite.id -> {
                 BlackOnWhite
             }
@@ -53,58 +59,117 @@ sealed class TextBitmapFilter {
             }
         }
 
-        val listOfFilters: ArrayList<TextBitmapFilter> =
+        val listOfFilters: ArrayList<AsciiGenerator> =
             arrayListOf(WhiteOnBlack, BlackOnWhite, OriginalColor, ANSI)
 
+        var textCharSize = 15f
+
     }
 
-    fun bitmapToText(bitmap: Bitmap): ArrayList<ArrayList<CharData>> {
+    private suspend fun Bitmap.scaleToCanvas(): Bitmap = withContext(Dispatchers.Default) {
 
-        val drawListY = arrayListOf<ArrayList<CharData>>()
+        val canvasHeight = 64
+        val canvasWidth = 64
 
-        for (y in 0 until bitmap.height) {
-            val drawListX = arrayListOf<CharData>()
+        /*if (height <= canvasHeight && width <= canvasWidth)
+            return this
 
-            for (x in 0 until bitmap.width) {
-                val pixel = bitmap[x, y]
+        var newHeight = canvasHeight
+        var newWidth = canvasWidth
 
-                drawListX.add(
-                    filterPixelToChar(pixel)
-                )
+        if (height > width) {
+            val fact = canvasHeight / height
+            newWidth = width * fact
+
+            if (newWidth > canvasWidth) {
+                val fact2 = canvasWidth / newWidth
+                newWidth = canvasWidth
+                newHeight *= fact2
             }
-            drawListY.add(drawListX)
-        }
 
-        return drawListY
+        } else {
+            val fact = canvasWidth / width
+            newHeight = height * fact
+
+            if (newHeight > canvasHeight) {
+                val fact2 = canvasHeight / newHeight
+                newHeight = canvasHeight
+                newWidth *= fact2
+            }
+        }*/
+
+        Bitmap.createScaledBitmap(
+            this@scaleToCanvas,
+            canvasHeight,
+            canvasWidth,
+            false
+        )
     }
 
-    /*suspend fun bitmapToTextJob(bitmap: Bitmap): ArrayList<ArrayList<CharData>>  {
+    private val _generatedBitmapState = MutableSharedFlow<Bitmap>()
+    val generatedBitmapState: SharedFlow<Bitmap> = _generatedBitmapState
 
-        val drawListY = arrayListOf<ArrayList<CharData>>()
+    suspend fun bitmapToTextBitmap(bitmap: Bitmap) = withContext(Dispatchers.Default) {
 
-        coroutineScope {
+        val newBitmap = Bitmap.createBitmap(
+            bitmap.width * textCharSize.toInt(),
+            bitmap.height * textCharSize.toInt(),
+            Bitmap.Config.ARGB_8888
+        )
+        val canvas = Canvas(newBitmap)
+        val textPaint = TextPaint()
+        textPaint.textSize = textCharSize
 
-            for (y in 0 until bitmap.height) {
-                val drawListX = arrayListOf<Deferred<CharData>>()
+        canvas.drawColor(Color.RED)
 
-                for (x in 0 until bitmap.width) {
-                    val pixel = bitmap[x, y]
+        val intArray = intArrayOf()
+        bitmap.getPixels(intArray,0,bitmap.width,0,0,bitmap.width, bitmap.height)
 
-                    drawListX.add(
-                        async { filterPixelToChar(pixel) }
-                    )
-                }
-                drawListY.add(ArrayList(drawListX.awaitAll()))
-            }
+        intArray.forEachIndexed { index, pixel ->
+
+            val x = xFromOneD(index, bitmap.width)
+            val y = yFromOneD(index, bitmap.width)
+
+            val charData = filterPixelToChar(pixel)
+
+            val string = charData.char.toString()
+            textPaint.color = charData.colorFg
+            canvas.drawText(string, x * textCharSize, y * textCharSize, textPaint)
         }
 
-        return drawListY
-    }*/
+        newBitmap
+    }
 
-    private fun filterPixelToChar(pixel: Int): CharData {
+    suspend fun imageProxyToTextBitmap(imageProxy: ImageProxy) = withContext(Dispatchers.Default) {
+
+
+        val planes = imageProxy.planes
+        val buffer: ByteBuffer = planes[0].buffer
+        val pixelStride: Int = planes[0].pixelStride
+        val rowStride: Int = planes[0].rowStride
+        val rowPadding: Int = rowStride - pixelStride * imageProxy.width
+
+        val bitmap = Bitmap.createBitmap(
+            imageProxy.width + rowPadding / pixelStride,
+            imageProxy.height, Bitmap.Config.ARGB_8888
+        )
+
+        bitmap.copyPixelsFromBuffer(buffer)
+
+        imageProxy.close()
+
+        val scaledBitmap = bitmap.scaleToCanvas()
+        val textBitmap = bitmapToTextBitmap(scaledBitmap)
+
+        _generatedBitmapState.emit(textBitmap)
+
+    }
+
+    private suspend fun filterPixelToChar(pixel: Int): CharData {
         val brightness = ColorUtils.calculateLuminance(pixel)
         val densityLength = density.length
         val charIndex = map(brightness.toFloat(), 0f, 1f, 0, densityLength)
+        yield()
         return CharData(
             char = density[densityLength - charIndex - 1],
             colorFg = fgColors(pixel),
@@ -134,7 +199,7 @@ sealed class TextBitmapFilter {
     protected abstract fun bgColor(pixel: Int): Int
 
 
-    object WhiteOnBlack : TextBitmapFilter() {
+    object WhiteOnBlack : AsciiGenerator() {
 
         override val id: Int
             get() = -2
@@ -154,7 +219,7 @@ sealed class TextBitmapFilter {
         override fun bgColor(pixel: Int): Int = Color.BLACK
     }
 
-    object BlackOnWhite : TextBitmapFilter() {
+    object BlackOnWhite : AsciiGenerator() {
 
         override val id: Int
             get() = -12
@@ -175,7 +240,7 @@ sealed class TextBitmapFilter {
         override fun bgColor(pixel: Int): Int = Color.WHITE
     }
 
-    object OriginalColor : TextBitmapFilter() {
+    object OriginalColor : AsciiGenerator() {
 
         override val id: Int
             get() = -3
@@ -196,7 +261,7 @@ sealed class TextBitmapFilter {
         override fun bgColor(pixel: Int): Int = Color.BLACK
     }
 
-    object ANSI : TextBitmapFilter() {
+    object ANSI : AsciiGenerator() {
 
 
         private const val ansiiFact = .9f
@@ -236,10 +301,10 @@ sealed class TextBitmapFilter {
         override fun bgColor(pixel: Int): Int = Color.BLACK
     }
 
-    object Custom : TextBitmapFilter() {
+    object Custom : AsciiGenerator() {
 
         private var specs: FilterSpecs = FilterSpecs()
-        operator fun invoke(filterSpecs: FilterSpecs = FilterSpecs()): TextBitmapFilter {
+        operator fun invoke(filterSpecs: FilterSpecs = FilterSpecs()): AsciiGenerator {
             specs = filterSpecs
 
             return this
@@ -254,7 +319,7 @@ sealed class TextBitmapFilter {
             get() = specs.density
 
 
-        override fun fgColors(pixel: Int): Int = when(specs.fgColorType){
+        override fun fgColors(pixel: Int): Int = when (specs.fgColorType) {
             COLOR_TYPE_NONE -> {
                 specs.fgColor
             }
@@ -264,7 +329,7 @@ sealed class TextBitmapFilter {
             COLOR_TYPE_ORIGINAL -> {
                 pixel
             }
-            else ->{
+            else -> {
                 specs.fgColor
             }
         }

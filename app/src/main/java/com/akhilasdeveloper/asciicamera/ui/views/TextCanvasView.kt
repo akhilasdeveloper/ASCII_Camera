@@ -3,6 +3,7 @@ package com.akhilasdeveloper.asciicamera.ui.views
 import android.content.Context
 import android.content.res.Resources
 import android.graphics.*
+import android.text.TextPaint
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
@@ -52,7 +53,7 @@ class TextCanvasView(
         }
     }
 
-    private var paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private var paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = Typeface.DEFAULT_BOLD
     }
     private var mListener: OnTextCaptureListener? = null
@@ -176,7 +177,6 @@ class TextCanvasView(
         val pixelStride: Int = planes[0].pixelStride
         val rowStride: Int = planes[0].rowStride
         val rowPadding: Int = rowStride - pixelStride * width
-
         val matrix = Matrix()
         if (inverse)
             matrix.preScale(-1f, 1f)
