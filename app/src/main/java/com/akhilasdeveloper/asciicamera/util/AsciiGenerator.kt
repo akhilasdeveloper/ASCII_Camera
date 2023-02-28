@@ -1,24 +1,23 @@
 package com.akhilasdeveloper.asciicamera.util
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Matrix
+import android.graphics.*
 import android.text.TextPaint
 import androidx.camera.core.ImageProxy
 import androidx.core.graphics.ColorUtils
 import com.akhilasdeveloper.asciicamera.util.Constants.DEFAULT_CUSTOM_CHARS
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import timber.log.Timber
 import java.nio.ByteBuffer
 
 sealed class AsciiGenerator {
 
 
     companion object {
+
+        init {
+            System.loadLibrary("asciicamera")
+        }
 
         const val COLOR_TYPE_NONE = -1
         const val COLOR_TYPE_ANSI = -2
@@ -62,9 +61,25 @@ sealed class AsciiGenerator {
         val listOfFilters: ArrayList<AsciiGenerator> =
             arrayListOf(WhiteOnBlack, BlackOnWhite, OriginalColor, ANSI)
 
-        var textCharSize = 15f
+        var textCharSize = 10f
 
     }
+
+    external fun convertRgbaToRgb(byteArray: ByteArray,outPutArray: IntArray, width: Int, height: Int)
+
+    /*fun convertRgbaToRgb(rgbaData: ByteArray, width: Int, height: Int): IntArray {
+        val rgbData = IntArray(width * height)
+        var pixelIndex = 0
+        for (i in rgbaData.indices step 4) {
+            val r = rgbaData[i].toInt() and 0xff
+            val g = rgbaData[i + 1].toInt() and 0xff
+            val b = rgbaData[i + 2].toInt() and 0xff
+            val a = rgbaData[i + 3].toInt() and 0xff
+            rgbData[pixelIndex++] = (a shl 24) or (r shl 16) or (g shl 8) or b
+        }
+        return rgbData
+    }*/
+
 
     private suspend fun Bitmap.scaleToCanvas(): Bitmap = withContext(Dispatchers.Default) {
 
@@ -109,61 +124,192 @@ sealed class AsciiGenerator {
     private val _generatedBitmapState = MutableSharedFlow<Bitmap>()
     val generatedBitmapState: SharedFlow<Bitmap> = _generatedBitmapState
 
-    suspend fun bitmapToTextBitmap(bitmap: Bitmap) = withContext(Dispatchers.Default) {
+    suspend fun bitmapToTextBitmap(intArray: IntArray, width: Int, height: Int) = withContext(Dispatchers.Default) {
+
+        val textSize = textCharSize.toInt()
+        val textBitmapWidth = width / textSize
+        val textBitmapHeight = height / textSize
 
         val newBitmap = Bitmap.createBitmap(
-            bitmap.width * textCharSize.toInt(),
-            bitmap.height * textCharSize.toInt(),
+            width,
+            height,
             Bitmap.Config.ARGB_8888
         )
+        newBitmap.prepareToDraw()
         val canvas = Canvas(newBitmap)
         val textPaint = TextPaint()
         textPaint.textSize = textCharSize
 
         canvas.drawColor(Color.RED)
 
-        val intArray = intArrayOf()
-        bitmap.getPixels(intArray,0,bitmap.width,0,0,bitmap.width, bitmap.height)
+        val charData = arrayListOf<Deferred<CharData>>()
 
-        intArray.forEachIndexed { index, pixel ->
+        for (y in 0 until textBitmapHeight)
+            for (x in 0 until textBitmapWidth)
+                charData.add(async {
+                    val pixel = getAveragePixel(textSize, width, x, y, intArray)
+                    filterPixelToChar(pixel)
+                })
 
-            val x = xFromOneD(index, bitmap.width)
-            val y = yFromOneD(index, bitmap.width)
 
-            val charData = filterPixelToChar(pixel)
+        charData.awaitAll().forEachIndexed { index, char ->
 
-            val string = charData.char.toString()
-            textPaint.color = charData.colorFg
+            val x = xFromOneD(index, textBitmapWidth)
+            val y = yFromOneD(index, textBitmapWidth)
+            val string = char.char.toString()
+            textPaint.color = char.colorFg
             canvas.drawText(string, x * textCharSize, y * textCharSize, textPaint)
         }
+
 
         newBitmap
     }
 
+    suspend fun bitmapToTextBitmap(bitmap: Bitmap) = withContext(Dispatchers.Default) {
+
+        val textSize = textCharSize.toInt()
+        val textBitmapWidth = bitmap.width / textSize
+        val textBitmapHeight = bitmap.height / textSize
+
+        val newBitmap = Bitmap.createBitmap(
+            bitmap.width,
+            bitmap.height,
+            Bitmap.Config.ARGB_8888
+        )
+        newBitmap.prepareToDraw()
+        val canvas = Canvas(newBitmap)
+        val textPaint = TextPaint()
+        textPaint.textSize = textCharSize
+
+        canvas.drawColor(Color.RED)
+
+        val charData = arrayListOf<Deferred<CharData>>()
+
+        for (y in 0 until textBitmapHeight)
+            for (x in 0 until textBitmapWidth)
+                charData.add(async {
+                    val pixel = getAveragePixel(textSize, x, y, bitmap)
+                    filterPixelToChar(pixel)
+                })
+
+
+        charData.awaitAll().forEachIndexed { index, char ->
+
+            val x = xFromOneD(index, textBitmapWidth)
+            val y = yFromOneD(index, textBitmapWidth)
+            val string = char.char.toString()
+            textPaint.color = char.colorFg
+            canvas.drawText(string, x * textCharSize, y * textCharSize, textPaint)
+        }
+
+
+        newBitmap
+    }
+
+    private fun getAveragePixel(textSize: Int,width: Int, x: Int, y: Int, intArray: IntArray): Int {
+        val start = TwoDtoOneD(width = width, x = x * textSize, y = y * textSize)
+        val end = TwoDtoOneD(width = width, x = (x * textSize) + (textSize -1), y = (y * textSize) + (textSize-1))
+        val array = intArray.sliceArray(start..end)
+
+        var r = 0
+        var g = 0
+        var b = 0
+
+        array.forEach {
+            r += Color.red(it)
+            b += Color.blue(it)
+            g += Color.green(it)
+        }
+
+        r /= textSize * textSize
+        g /= textSize * textSize
+        b /= textSize * textSize
+
+        return Color.argb(255, r, g, b)
+    }
+
+    private fun getAveragePixel(textSize: Int, x: Int, y: Int, bitmap: Bitmap): Int {
+        val intArray = IntArray(textSize * textSize)
+        bitmap.getPixels(intArray, 0, textSize, x * textSize, y * textSize, textSize, textSize)
+        var r = 0
+        var g = 0
+        var b = 0
+
+        intArray.forEach {
+            r += Color.red(it)
+            b += Color.blue(it)
+            g += Color.green(it)
+        }
+
+        r /= textSize * textSize
+        g /= textSize * textSize
+        b /= textSize * textSize
+
+        return Color.argb(255, r, g, b)
+    }
+
+
+    val paint = Paint()
     suspend fun imageProxyToTextBitmap(imageProxy: ImageProxy) = withContext(Dispatchers.Default) {
 
+        val startMillis = System.currentTimeMillis()
 
         val planes = imageProxy.planes
-        val buffer: ByteBuffer = planes[0].buffer
+        val buffer = planes[0].buffer
         val pixelStride: Int = planes[0].pixelStride
         val rowStride: Int = planes[0].rowStride
         val rowPadding: Int = rowStride - pixelStride * imageProxy.width
 
+        val width = imageProxy.width + rowPadding / pixelStride
         val bitmap = Bitmap.createBitmap(
             imageProxy.width + rowPadding / pixelStride,
             imageProxy.height, Bitmap.Config.ARGB_8888
         )
 
-        bitmap.copyPixelsFromBuffer(buffer)
+        bitmap.prepareToDraw()
+        val canvas = Canvas(bitmap)
+        val outPutArray = IntArray(width * imageProxy.height)
+        convertRgbaToRgb(convertByteBufferToByteArray(buffer),outPutArray, width, imageProxy.height)
+
+        /*outPutArray.forEachIndexed { index, i ->
+            val x = xFromOneD(index, imageProxy.width)
+            val y = yFromOneD(index, imageProxy.width)
+            paint.color = i
+//            canvas.drawColor(i)
+            canvas.drawPoint(x.toFloat(),y.toFloat(),paint)
+//            Timber.d("Testsss $i -- $x:$y -- $index")
+        }*/
+
+//        bitmap.copyPixelsFromBuffer(buffer)
 
         imageProxy.close()
 
-        val scaledBitmap = bitmap.scaleToCanvas()
-        val textBitmap = bitmapToTextBitmap(scaledBitmap)
+        val textBitmap = bitmapToTextBitmap(outPutArray, width, imageProxy.height)
+
+//        Timber.d("Processed frame in ${System.currentTimeMillis() - startMillis}")
 
         _generatedBitmapState.emit(textBitmap)
 
     }
+
+    fun convertByteBufferToByteArray(buffer: ByteBuffer): ByteArray {
+        val bytes = ByteArray(buffer.remaining())
+        buffer.get(bytes)
+        return bytes
+    }
+
+    open fun convertToRgb(buffer: ByteBuffer, width: Int, height: Int): IntArray? {
+        val rgbData = IntArray(width * height)
+        for (i in 0 until (width * height)) {
+            val r = buffer.get().toInt() and 0xff
+            val g = buffer.get().toInt() and 0xff
+            val b = buffer.get().toInt() and 0xff
+            buffer.get() // Skip the alpha channel
+            rgbData[i] = -0x1000000 or (r shl 16) or (g shl 8) or b
+        }
+        return rgbData
+    }
+
 
     private suspend fun filterPixelToChar(pixel: Int): CharData {
         val brightness = ColorUtils.calculateLuminance(pixel)
