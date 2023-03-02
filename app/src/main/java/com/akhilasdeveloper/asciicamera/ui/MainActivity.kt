@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.ImageDecoder
 import android.graphics.Matrix
 import android.graphics.drawable.ColorDrawable
@@ -94,7 +95,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     private lateinit var viewModel: MainViewModel
     private var sampleBitmap: Bitmap? = null
 
-    private val asciiGenerator:AsciiGenerator = AsciiGenerator.BlackOnWhite
+    private val asciiGenerator:AsciiGenerator = AsciiGenerator.WhiteOnBlack
 
     private var requestGallery: ActivityResultLauncher<Intent> = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -519,7 +520,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             asciiGenerator.imageProxyToTextBitmap(imageProxy)
         }
         /*lifecycleScope.launch {
-            asciiGenerator.generateDensityBytes().let {
+            asciiGenerator.filterPixelToCharIntArrayTest(Color.DKGRAY).let {
                 binding.image.setImageBitmap(it)
             }
         }*/

@@ -33,7 +33,7 @@ sealed class AsciiGenerator {
 
         data class CharData(
             val char: Char,
-            val charIntArray: ArrayList<Int> = arrayListOf(),
+            val charIntArray: List<Int> = listOf(),
             val colorFg: Int,
             val colorBg: Int
         )
@@ -126,15 +126,7 @@ sealed class AsciiGenerator {
             val textPaint = TextPaint()
             textPaint.textSize = textCharSize
 
-            /*for (y in 0 until textBitmapHeight)
-                for (x in 0 until textBitmapWidth) {
-
-                    val pixel = getAveragePixel(textSize, width, x * textCharSize.toInt(), y * textCharSize.toInt(), intArray)
-                    textPaint.color = pixel
-                    canvas.drawRect( x * textCharSize, y * textCharSize, (x * textCharSize) + textCharSize, (y * textCharSize) + textCharSize, textPaint)
-                }*/
-
-            val charData = arrayListOf<Deferred<CharData>>()
+            val charData = arrayListOf<Deferred<IntArray>>()
 
             for (y in 0 until textBitmapHeight)
                 for (x in 0 until textBitmapWidth)
@@ -146,22 +138,27 @@ sealed class AsciiGenerator {
                             y * textCharSize.toInt(),
                             intArray
                         )
-                        filterPixelToChar(pixel)
+                        filterPixelToCharIntArray(pixel)
                     })
 
-            var isColored = false
             charData.awaitAll().forEachIndexed { index, char ->
 
-                if (!isColored) {
+                /*if (!isColored) {
                     canvas.drawColor(char.colorBg)
                     isColored = true
-                }
+                }*/
 
                 val x = xFromOneD(index, textBitmapWidth)
                 val y = yFromOneD(index, textBitmapWidth)
-                val string = char.char.toString()
-                textPaint.color = char.colorFg
-                canvas.drawText(string, x * textCharSize, y * textCharSize, textPaint)
+
+                char.forEachIndexed { indexx, i ->
+                    val xx = xFromOneD(indexx, textCharSize.toInt())
+                    val yy = yFromOneD(indexx, textCharSize.toInt())
+                    textPaint.color = i
+                    canvas.drawPoint((x * textSize) + xx.toFloat(),(y * textSize) + yy.toFloat(), textPaint)
+                }
+
+//                canvas.drawText(string, x * textCharSize, y * textCharSize, textPaint)
             }
 
 
@@ -248,14 +245,53 @@ sealed class AsciiGenerator {
         val densityLength = density.length
         val charIndex = map(brightness.toFloat(), 0f, 1f, 0, densityLength)
         val index = densityLength - charIndex - 1
-        val sliceChar = densityIntArray.getSubPixels(densityLength * textCharSize.toInt(), index * textCharSize.toInt(), 0, textCharSize.toInt(), textCharSize.toInt())
+        val sliceChar = densityIntArray.getSubPixels(
+            densityLength * textCharSize.toInt(),
+            index * textCharSize.toInt(),
+            0,
+            textCharSize.toInt(),
+            textCharSize.toInt()
+        )
         yield()
         return CharData(
             char = density[index],
-
+            charIntArray = sliceChar.toList(),
             colorFg = fgColors(pixel),
             colorBg = bgColor(pixel)
         )
+    }
+
+    private suspend fun filterPixelToCharIntArray(pixel: Int): IntArray {
+        val brightness = ColorUtils.calculateLuminance(pixel)
+        val densityLength = density.length
+        val charIndex = map(brightness.toFloat(), 0f, 1f, 0, densityLength)
+        val index = densityLength - charIndex - 1
+        val sliceChar = densityIntArray.getSubPixels(
+            densityLength * textCharSize.toInt(),
+            index * textCharSize.toInt(),
+            0,
+            textCharSize.toInt(),
+            textCharSize.toInt()
+        )
+        yield()
+        return sliceChar
+    }
+
+    fun filterPixelToCharIntArrayTest(pixel: Int): Bitmap {
+        val brightness = ColorUtils.calculateLuminance(pixel)
+        val densityLength = density.length
+        val charIndex = map(brightness.toFloat(), 0f, 1f, 0, densityLength)
+        val index = densityLength - charIndex - 1
+        val sliceChar = densityIntArray.getSubPixels(
+            densityLength * textCharSize.toInt(),
+            index * textCharSize.toInt(),
+            0,
+            textCharSize.toInt(),
+            textCharSize.toInt()
+        )
+        return Bitmap.createBitmap(
+            sliceChar, textCharSize.toInt(), textCharSize.toInt(), Bitmap.Config.ARGB_8888)
+
     }
 
     private fun map(
@@ -277,7 +313,7 @@ sealed class AsciiGenerator {
 
     protected abstract val density: String
 
-    protected val densityIntArray: IntArray
+    private val densityIntArray: IntArray
         get() {
             if (_densityIntArray.isEmpty())
                 _densityIntArray = generateDensityBytes()
