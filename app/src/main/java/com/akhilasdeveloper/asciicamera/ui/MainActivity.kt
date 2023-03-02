@@ -518,6 +518,11 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         lifecycleScope.launch {
             asciiGenerator.imageProxyToTextBitmap(imageProxy)
         }
+        /*lifecycleScope.launch {
+            asciiGenerator.generateDensityBytes().let {
+                binding.image.setImageBitmap(it)
+            }
+        }*/
     }
 
     private fun buildImageAnalysisUseCase(): ImageAnalysis {

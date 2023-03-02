@@ -10,7 +10,6 @@ import com.akhilasdeveloper.asciicamera.util.Constants.ASCII_DB_NAME
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 internal val Context.userPreferencesDataStore: DataStore<Preferences> by preferencesDataStore(
@@ -37,6 +36,27 @@ inline fun Bitmap.forEachIndexed(action: (x: Int, y: Int, pixel: Int) -> Unit): 
     for (x in 0 until width)
         for (y in 0 until height)
             action(x, y, get(x, y))
+}
+
+fun Bitmap.getAllPixels(intArray: IntArray){
+    getPixels(intArray, 0,width,0,0,width, height)
+}
+fun IntArray.getSubPixels(
+    width: Int,
+    xStart: Int,
+    yStart: Int,
+    destWidth: Int,
+    destHeight: Int
+): IntArray {
+    val yEnd = yStart + destHeight
+    val xEnd = xStart + destWidth
+    val subArray = mutableListOf <Int>()
+
+    for (i in yStart until yEnd) {
+        val row: IntArray = sliceArray(i * width + xStart until i * width + xEnd)
+        subArray.addAll(row.toList())
+    }
+    return subArray.toIntArray()
 }
 
 fun TwoDtoOneD(x: Int, y: Int, width: Int): Int = x + width * y
