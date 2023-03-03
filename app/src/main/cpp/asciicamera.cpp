@@ -1,17 +1,22 @@
 #include "jni.h"
 #include "string"
 #include "iostream"
+#include <cmath>
 
-extern "C" JNIEXPORT jstring JNICALL
-Java_com_akhilasdeveloper_asciicamera_ui_MainActivity_Test(JNIEnv *env, jobject) {
-    std::string hello = "Hello test";
-    return env->NewStringUTF(hello.c_str());
-}
+jdouble calculateLuminanceNative(jint color);
+
+jint mapNative(jfloat value,
+               jfloat startValue,
+               jfloat endValue,
+               jint mapStartValue,
+               jint mapEndValue);
+
 
 extern "C" jint
-Java_com_akhilasdeveloper_asciicamera_util_AsciiGenerator_calculateAvgColorNative(JNIEnv *env, jobject,
-                                                                            jintArray pixels,
-                                                                            jint size) {
+Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_calculateAvgColorNative(
+        JNIEnv *env, jobject,
+        jintArray pixels,
+        jint size) {
     jint *pixelsJ = env->GetIntArrayElements(pixels, nullptr);
 
     jint a = 0;
@@ -37,14 +42,15 @@ Java_com_akhilasdeveloper_asciicamera_util_AsciiGenerator_calculateAvgColorNativ
 }
 
 extern "C" void
-Java_com_akhilasdeveloper_asciicamera_util_AsciiGenerator_getSubPixelsNative(JNIEnv *env, jobject,
-                                                                       jint width,
-                                                                       jint xStart,
-                                                                       jint yStart,
-                                                                       jint destWidth,
-                                                                       jint destHeight,
-                                                                       jintArray array,
-                                                                       jintArray resultArray) {
+Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_getSubPixelsNative(
+        JNIEnv *env, jobject,
+        jint width,
+        jint xStart,
+        jint yStart,
+        jint destWidth,
+        jint destHeight,
+        jintArray array,
+        jintArray resultArray) {
 
     // Get a pointer to the input byte array
     jint *arrayJ = env->GetIntArrayElements(array, nullptr);
@@ -67,14 +73,84 @@ Java_com_akhilasdeveloper_asciicamera_util_AsciiGenerator_getSubPixelsNative(JNI
 
 }
 
+extern "C" void
+Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_addToResultArrayNative(
+        JNIEnv *env, jobject,
+        jint x,
+        jint y,
+        jint width,
+        jint textSizeInt,
+        jintArray array,
+        jintArray resultArray) {
 
+    // Get a pointer to the input byte array
+    jint *arrayJ = env->GetIntArrayElements(array, nullptr);
+    jint *resultArrayJ = env->GetIntArrayElements(resultArray, nullptr);
+
+    for (int index = 0; index < textSizeInt * textSizeInt; ++index) {
+        jint i = arrayJ[index];
+        jint xx = index % textSizeInt;
+        jint yy = index / textSizeInt;
+        jint mainIndex = ((x * textSizeInt) + xx) + width * ((y * textSizeInt) + yy);
+        resultArrayJ[mainIndex] = i;
+    }
+
+    env->ReleaseIntArrayElements(array, arrayJ, 0);
+    env->ReleaseIntArrayElements(resultArray, resultArrayJ, 0);
+
+}
+
+extern "C" jint
+Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_calculateDensityIndexNative(
+        JNIEnv *env, jobject,
+        jint pixel,
+        jint densityLength) {
+
+    jdouble brightness = calculateLuminanceNative(pixel);
+    jint charIndex = mapNative((float) brightness, 0, 1, 0, densityLength);
+    return densityLength - charIndex - 1;
+}
+
+
+jint mapNative(jfloat value,
+               jfloat startValue,
+               jfloat endValue,
+               jint mapStartValue,
+               jint mapEndValue) {
+
+    jfloat n = endValue - startValue;
+    jint mapN = mapEndValue - mapStartValue;
+    jfloat factor = ((float) mapN) / n;
+    jint result = ((jint) ((startValue + value) * factor));
+    if (result < 0)
+        result = 0;
+    if (result > mapN - 1)
+        result = mapN - 1;
+    return result;
+}
+
+jdouble calculateLuminanceNative(jint color) {
+
+    jint r = (color >> 16) & 0xff;
+    jint g = (color >> 8) & 0xff;
+    jint b = color & 0xff;
+
+    double sr = r / 255.0;
+    sr = sr < 0.04045 ? sr / 12.92 : pow((sr + 0.055) / 1.055, 2.4);
+    double sg = g / 255.0;
+    sg = sg < 0.04045 ? sg / 12.92 : pow((sg + 0.055) / 1.055, 2.4);
+    double sb = b / 255.0;
+    sb = sb < 0.04045 ? sb / 12.92 : pow((sb + 0.055) / 1.055, 2.4);
+    return (sr * 0.2126 + sg * 0.7152 + sb * 0.0722);
+}
 
 extern "C" void
-Java_com_akhilasdeveloper_asciicamera_util_AsciiGenerator_convertByteArrayToRgbNative(JNIEnv *env, jobject,
-                                                                           jbyteArray rgbaData,
-                                                                           jintArray jcolorOutput,
-                                                                           jint width,
-                                                                           jint height) {
+Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_convertByteArrayToRgbNative(
+        JNIEnv *env, jobject,
+        jbyteArray rgbaData,
+        jintArray jcolorOutput,
+        jint width,
+        jint height) {
 
     // Get a pointer to the input byte array
     jbyte *data = env->GetByteArrayElements(rgbaData, nullptr);

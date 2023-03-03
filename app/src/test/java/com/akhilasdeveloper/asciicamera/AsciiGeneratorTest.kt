@@ -1,6 +1,5 @@
 package com.akhilasdeveloper.asciicamera
 
-import com.akhilasdeveloper.asciicamera.util.AsciiGenerator
 import com.akhilasdeveloper.asciicamera.util.getSubPixels
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test

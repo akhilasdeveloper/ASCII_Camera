@@ -8,9 +8,7 @@ import android.content.pm.PackageManager
 import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Color
 import android.graphics.ImageDecoder
-import android.graphics.Matrix
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
@@ -43,6 +41,7 @@ import com.akhilasdeveloper.asciicamera.util.*
 import com.akhilasdeveloper.asciicamera.util.Constants.BITMAP_PATH
 import com.akhilasdeveloper.asciicamera.util.Constants.DEFAULT_CUSTOM_CHARS
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
+import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiGenerator
 import com.flask.colorpicker.ColorPickerView
 import com.flask.colorpicker.OnColorSelectedListener
 import com.flask.colorpicker.builder.ColorPickerClickListener
@@ -64,14 +63,6 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     RecyclerCustomFiltersClickListener {
-
-    companion object {
-        init {
-            System.loadLibrary("asciicamera")
-        }
-    }
-
-    external fun Test(): String
 
     private var _binding: ActivityMainBinding? = null
     private val binding get() = _binding!!
@@ -95,7 +86,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     private lateinit var viewModel: MainViewModel
     private var sampleBitmap: Bitmap? = null
 
-    private val asciiGenerator:AsciiGenerator = AsciiGenerator.WhiteOnBlack
+    private val asciiGenerator: AsciiGenerator = AsciiGenerator()
 
     private var requestGallery: ActivityResultLauncher<Intent> = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -122,8 +113,6 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         super.onCreate(savedInstanceState)
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        Timber.d("Test cpp ${Test()}")
 
         asciiGenerator.generatedBitmapState.observe(lifecycleScope){
             binding.image.setImageBitmap(it)

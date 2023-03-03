@@ -41,6 +41,19 @@ inline fun Bitmap.forEachIndexed(action: (x: Int, y: Int, pixel: Int) -> Unit): 
 fun Bitmap.getAllPixels(intArray: IntArray){
     getPixels(intArray, 0,width,0,0,width, height)
 }
+
+fun Float.map(
+    startValue: Float,
+    endValue: Float,
+    mapStartValue: Int,
+    mapEndValue: Int
+): Int {
+    val n = endValue - startValue
+    val mapN = mapEndValue - mapStartValue
+    val factor = mapN.toFloat() / n
+    return ((startValue + this) * factor).toInt().coerceAtLeast(0).coerceAtMost(mapN - 1)
+}
+
 fun IntArray.getSubPixels(
     width: Int,
     xStart: Int,
