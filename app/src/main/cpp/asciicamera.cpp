@@ -11,6 +11,51 @@ jint mapNative(jfloat value,
                jint mapStartValue,
                jint mapEndValue);
 
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reducePixelsNative(
+        JNIEnv *env, jobject thiz, jint x, jint y, jint width, jint text_size_int,
+        jbyteArray int_array) {
+    jbyte *pixelsJ = env->GetByteArrayElements(int_array, nullptr);
+
+    jint arraySize = text_size_int * text_size_int;
+    jint xStart = x * text_size_int;
+    jint yStart = y * text_size_int;
+
+    jint yEnd = yStart + text_size_int;
+    jint xEnd = xStart + text_size_int;
+
+    jint a = 0;
+    jint r = 0;
+    jint g = 0;
+    jint b = 0;
+
+    jint offset = 4;
+
+    for (jint i = yStart; i < yEnd; i++) {
+        for (jint j = i * width + xStart; j < i * width + xEnd; j++) {
+
+            jint index = offset * i;
+
+            r += static_cast<uint8_t>(pixelsJ[index]);
+            g += static_cast<uint8_t>(pixelsJ[index + 1]);
+            b += static_cast<uint8_t>(pixelsJ[index + 2]);
+            a += static_cast<uint8_t>(pixelsJ[index + 3]);
+
+        }
+    }
+
+    a /= arraySize;
+    r /= arraySize;
+    g /= arraySize;
+    b /= arraySize;
+
+    env->ReleaseByteArrayElements(int_array, pixelsJ, 0);
+
+    return (a << 24) | (r << 16) | (g << 8) | b;
+
+}
+
 
 extern "C" jint
 Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_calculateAvgColorNative(
@@ -74,28 +119,62 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_getSubP
 }
 
 extern "C" void
+Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_getSubPixelsBytesNative(
+        JNIEnv *env, jobject,
+        jint width,
+        jint xStart,
+        jint yStart,
+        jint destWidth,
+        jint destHeight,
+        jbyteArray array,
+        jbyteArray resultArray) {
+
+    // Get a pointer to the input byte array
+    jbyte *arrayJ = env->GetByteArrayElements(array, nullptr);
+
+    jbyte *resultArrayJ = env->GetByteArrayElements(resultArray, nullptr);
+
+    jint yEnd = yStart + destHeight;
+    jint xEnd = xStart + destWidth;
+
+    jint index = 0;
+    for (jint i = yStart; i < yEnd; i++) {
+        for (jint j = i * width + xStart; j < i * width + xEnd; j++) {
+            resultArrayJ[index] = arrayJ[j];
+            index++;
+        }
+    }
+
+    env->ReleaseByteArrayElements(array, arrayJ, 0);
+    env->ReleaseByteArrayElements(resultArray, resultArrayJ, 0);
+
+}
+
+extern "C" void
 Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_addToResultArrayNative(
         JNIEnv *env, jobject,
         jint x,
         jint y,
         jint width,
         jint textSizeInt,
-        jintArray array,
+        jint bgColor,
+        jint fgColor,
+        jbyteArray array,
         jintArray resultArray) {
 
     // Get a pointer to the input byte array
-    jint *arrayJ = env->GetIntArrayElements(array, nullptr);
+    jbyte *arrayJ = env->GetByteArrayElements(array, nullptr);
     jint *resultArrayJ = env->GetIntArrayElements(resultArray, nullptr);
 
     for (int index = 0; index < textSizeInt * textSizeInt; ++index) {
-        jint i = arrayJ[index];
+        jbyte i = arrayJ[index];
         jint xx = index % textSizeInt;
         jint yy = index / textSizeInt;
         jint mainIndex = ((x * textSizeInt) + xx) + width * ((y * textSizeInt) + yy);
-        resultArrayJ[mainIndex] = i;
+        resultArrayJ[mainIndex] = (i) ? fgColor : bgColor;
     }
 
-    env->ReleaseIntArrayElements(array, arrayJ, 0);
+    env->ReleaseByteArrayElements(array, arrayJ, 0);
     env->ReleaseIntArrayElements(resultArray, resultArrayJ, 0);
 
 }
@@ -174,3 +253,4 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_convert
     env->ReleaseIntArrayElements(jcolorOutput, rgbData, 0);
 
 }
+

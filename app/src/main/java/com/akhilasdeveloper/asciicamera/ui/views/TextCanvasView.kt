@@ -171,7 +171,7 @@ class TextCanvasView(
         this.bitmap = bitmap
     }
 
-    private fun ImageProxy.toBitmap(): Bitmap? {
+    fun ImageProxy.toBitmap(): Bitmap? {
         val planes = planes
         val buffer: ByteBuffer = planes[0].buffer
         val pixelStride: Int = planes[0].pixelStride

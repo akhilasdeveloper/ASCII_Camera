@@ -2,6 +2,8 @@ package com.akhilasdeveloper.asciicamera.util
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Matrix
+import androidx.camera.core.ImageProxy
 import androidx.core.graphics.get
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -11,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.nio.ByteBuffer
 
 internal val Context.userPreferencesDataStore: DataStore<Preferences> by preferencesDataStore(
     name = ASCII_DB_NAME
@@ -70,6 +73,40 @@ fun IntArray.getSubPixels(
         subArray.addAll(row.toList())
     }
     return subArray.toIntArray()
+}
+
+fun ByteArray.getSubPixels(
+    width: Int,
+    xStart: Int,
+    yStart: Int,
+    destWidth: Int,
+    destHeight: Int
+): ByteArray {
+    val yEnd = yStart + destHeight
+    val xEnd = xStart + destWidth
+    val subArray = mutableListOf <Byte>()
+
+    for (i in yStart until yEnd) {
+        val row: ByteArray = sliceArray(i * width + xStart until i * width + xEnd)
+        subArray.addAll(row.toList())
+    }
+    return subArray.toByteArray()
+}
+
+fun ImageProxy.toBitmap(): Bitmap? {
+    val planes = planes
+    val buffer: ByteBuffer = planes[0].buffer
+    val pixelStride: Int = planes[0].pixelStride
+    val rowStride: Int = planes[0].rowStride
+    val rowPadding: Int = rowStride - pixelStride * width
+
+    val bitmap = Bitmap.createBitmap(
+        width + rowPadding / pixelStride,
+        height, Bitmap.Config.ARGB_8888
+    )
+
+    bitmap.copyPixelsFromBuffer(buffer)
+    return bitmap
 }
 
 fun TwoDtoOneD(x: Int, y: Int, width: Int): Int = x + width * y

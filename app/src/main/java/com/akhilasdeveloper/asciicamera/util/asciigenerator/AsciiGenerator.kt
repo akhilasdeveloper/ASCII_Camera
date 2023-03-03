@@ -4,7 +4,6 @@ import android.graphics.*
 import androidx.camera.core.ImageProxy
 import androidx.core.graphics.ColorUtils
 import com.akhilasdeveloper.asciicamera.util.*
-import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters.Companion.CharData
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -35,6 +34,7 @@ class AsciiGenerator() {
     private var fgColor = filters.fgColor
     private var bgColor = filters.bgColor
 
+    private val runtimeCalculator = RuntimeCalculator()
     fun changeFilter(filters: AsciiFilters) {
         this.filters = filters
         textSize = filters.textCharSize
@@ -45,8 +45,8 @@ class AsciiGenerator() {
         _densityIntArray = listOf()
     }
 
-    private var _densityIntArray: List<IntArray> = listOf()
-    private val densityIntArray: List<IntArray>
+    private var _densityIntArray: List<ByteArray> = listOf()
+    private val densityIntArray: List<ByteArray>
         get() {
             if (_densityIntArray.isEmpty())
                 _densityIntArray = generateDensityBytes()
@@ -54,7 +54,7 @@ class AsciiGenerator() {
             return _densityIntArray
         }
 
-    private fun generateDensityBytes(): List<IntArray> {
+    private fun generateDensityBytes(): List<ByteArray> {
         val canvas = Canvas()
         val bitmap = Bitmap.createBitmap(
             textSizeInt * density.length,
@@ -78,26 +78,31 @@ class AsciiGenerator() {
         }
 
         val array = IntArray(bitmap.width * bitmap.height)
+        val byteArray = ByteArray(bitmap.width * bitmap.height)
         bitmap.getAllPixels(array)
 
+        array.forEachIndexed { index, i ->
+            byteArray[index] = (i and 0xff).toByte()
+        }
+
         val densityLength = density.length
-        val result = mutableListOf<IntArray>()
+        val result = mutableListOf<ByteArray>()
 
         for (index in density.indices) {
-            var sliceChar = IntArray(textSizeInt * textSizeInt)
+            var sliceChar = ByteArray(textSizeInt * textSizeInt)
             if (isNativeLibAvailable) {
-                getSubPixelsNative(
+                getSubPixelsBytesNative(
                     width = densityLength * textSizeInt,
                     xStart = index * textSizeInt,
                     yStart = 0,
                     destWidth = textSizeInt,
                     destHeight = textSizeInt,
-                    array = array,
+                    array = byteArray,
                     resultArray = sliceChar
                 )
             } else {
                 sliceChar =
-                    array.getSubPixels(
+                    byteArray.getSubPixels(
                         width = densityLength * textSizeInt,
                         xStart = index * textSizeInt,
                         yStart = 0,
@@ -122,6 +127,16 @@ class AsciiGenerator() {
         resultArray: IntArray
     )
 
+    private external fun getSubPixelsBytesNative(
+        width: Int,
+        xStart: Int,
+        yStart: Int,
+        destWidth: Int,
+        destHeight: Int,
+        array: ByteArray,
+        resultArray: ByteArray
+    )
+
     private external fun calculateAvgColorNative(array: IntArray, size: Int): Int
 
     private external fun convertByteArrayToRgbNative(
@@ -138,7 +153,9 @@ class AsciiGenerator() {
         y: Int,
         width: Int,
         textSizeInt: Int,
-        char: IntArray,
+        bgColor: Int,
+        fgColor: Int,
+        char: ByteArray,
         resultArray: IntArray
     )
     private fun convertRgbaToRgb(rgbaData: ByteArray, width: Int, height: Int): IntArray {
@@ -156,46 +173,46 @@ class AsciiGenerator() {
     private val _generatedBitmapState = MutableSharedFlow<Bitmap>()
     val generatedBitmapState: SharedFlow<Bitmap> = _generatedBitmapState
 
-    private suspend fun rgbArrayToTextBitmap(intArray: IntArray, width: Int, height: Int) =
+    private suspend fun rgbArrayToTextBitmap(intArray: ByteArray, width: Int, height: Int) =
         withContext(Dispatchers.Default) {
 
             val textBitmapWidth = width / textSizeInt
             val textBitmapHeight = height / textSizeInt
 
             val resultArray = IntArray(width * height)
-            val job: ArrayList<Deferred<List<Unit>>> = arrayListOf()
+            val resultAvgArray = IntArray(textBitmapWidth * textBitmapHeight)
+            var index = 0
+            val job: ArrayList<Deferred<Int>> = arrayListOf()
 
             for (y in 0 until textBitmapHeight) {
-                job.add(async { fetchRows(intArray, resultArray, textBitmapWidth, width, y) })
+                for (x in 0 until textBitmapWidth)
+                    job.add(async {
+                        reducePixelsNative(x, y, width, textSizeInt, intArray)
+                    })
             }
-            job.awaitAll()
-            val newBitmap = Bitmap.createBitmap(resultArray, width, height, Bitmap.Config.ARGB_8888)
+
+            val newBitmap = Bitmap.createBitmap(job.awaitAll().toIntArray(), textBitmapWidth, textBitmapHeight, Bitmap.Config.ARGB_8888)
 
             newBitmap
         }
 
+    private external fun reducePixelsNative(
+        x: Int,
+        y: Int,
+        width: Int,
+        textSizeInt: Int,
+        intArray: ByteArray
+    ):Int
+
     private suspend fun fetchRows(
-        intArray: IntArray,
+        intArray: ByteArray,
         resultArray: IntArray,
         textBitmapWidth: Int,
         width: Int,
         y: Int
     ) =
         withContext(Dispatchers.Default) {
-            val job: ArrayList<Deferred<Unit>> = arrayListOf()
-            for (x in 0 until textBitmapWidth)
-                job.add(async {
-                    val pixel = getAveragePixel(
-                        range = textSizeInt,
-                        width = width,
-                        xStart = x * textSizeInt,
-                        yStart = y * textSizeInt,
-                        pixels = intArray
-                    )
-                    val char = filterPixelToCharIntArray(pixel)
-                    addToResultArray(x, y, width, textSizeInt, char, resultArray)
-                })
-            job.awaitAll()
+
         }
 
     private fun addToResultArray(
@@ -203,40 +220,32 @@ class AsciiGenerator() {
         y: Int,
         width: Int,
         textSizeInt: Int,
-        char: IntArray,
+        char: ByteArray,
         resultArray: IntArray
     ) {
         if (isNativeLibAvailable){
-            addToResultArrayNative(x,y,width,textSizeInt,char,resultArray)
+            addToResultArrayNative(x,y,width,textSizeInt,Color.BLACK, Color.WHITE, char,resultArray)
         }else {
             char.forEachIndexed { index, i ->
                 val xx = xFromOneD(index, textSizeInt)
                 val yy = yFromOneD(index, textSizeInt)
                 val mainIndex =
                     TwoDtoOneD((x * textSizeInt) + xx, (y * textSizeInt) + yy, width)
-                resultArray[mainIndex] = i
+                resultArray[mainIndex] = if (i!=0.toByte()) Color.WHITE else Color.BLACK
             }
         }
     }
 
-    private fun getAveragePixel(
+    /*private fun getAveragePixel(
         range: Int,
         width: Int,
         xStart: Int,
         yStart: Int,
         pixels: IntArray
     ): Int {
-        var array = IntArray(range * range)
 
-        return if (isNativeLibAvailable) {
-            getSubPixelsNative(width, xStart, yStart, range, range, pixels, array)
-            calculateAvgColorNative(array, array.size)
-        } else {
-            array = pixels.getSubPixels(width, xStart, yStart, range, range)
-            calculateAvgColor(array)
-        }
 
-    }
+    }*/
 
     private fun calculateAvgColor(array: IntArray): Int {
         var r = 0
@@ -258,14 +267,14 @@ class AsciiGenerator() {
 
     suspend fun imageProxyToTextBitmap(imageProxy: ImageProxy) = withContext(Dispatchers.Default) {
 
-        val startMillis = System.currentTimeMillis()
+        runtimeCalculator.start("imageProxyToTextBitmap")
 
         val planes = imageProxy.planes
         val buffer = planes[0].buffer
 
-        var outPutArray = IntArray(imageProxy.width * imageProxy.height)
-
-        if (isNativeLibAvailable)
+        val outPutArray = convertByteBufferToByteArray(buffer)
+//        imageProxy.toBitmap()?.getAllPixels(outPutArray)
+        /*if (isNativeLibAvailable)
             convertByteArrayToRgbNative(
                 convertByteBufferToByteArray(buffer),
                 outPutArray,
@@ -276,13 +285,12 @@ class AsciiGenerator() {
                 convertByteBufferToByteArray(buffer),
                 imageProxy.width,
                 imageProxy.height
-            )
-
+            )*/
         imageProxy.close()
 
-        val textBitmap = rgbArrayToTextBitmap(outPutArray, imageProxy.width, imageProxy.height)
+        runtimeCalculator.finish("imageProxyToTextBitmap")
 
-        Timber.d("Processed frame in ${System.currentTimeMillis() - startMillis}")
+        val textBitmap = rgbArrayToTextBitmap(outPutArray, imageProxy.width, imageProxy.height)
 
         _generatedBitmapState.emit(textBitmap)
 
@@ -315,7 +323,7 @@ class AsciiGenerator() {
         )
     }*/
 
-    private suspend fun filterPixelToCharIntArray(pixel: Int): IntArray {
+    private suspend fun filterPixelToCharIntArray(pixel: Int): ByteArray {
         val densityLength = density.length
         val index: Int = if (isNativeLibAvailable) {
             calculateDensityIndexNative(pixel, densityLength)
