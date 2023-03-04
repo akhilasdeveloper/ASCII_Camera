@@ -11,12 +11,18 @@ jint mapNative(jfloat value,
                jint mapStartValue,
                jint mapEndValue);
 
+jint calculateDensityIndexNative(jint pixel, jint length);
+
 extern "C"
-JNIEXPORT jint JNICALL
+JNIEXPORT void JNICALL
 Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reducePixelsNative(
-        JNIEnv *env, jobject thiz, jint x, jint y, jint width, jint text_size_int,
-        jbyteArray int_array) {
+        JNIEnv *env, jobject thiz, jint x, jint y, jint width, jint text_bitmap_width,
+        jint text_size_int, jbyteArray int_array, jintArray ascii_color_array,
+        jintArray ascii_index_array, jint density_length) {
+
     jbyte *pixelsJ = env->GetByteArrayElements(int_array, nullptr);
+    jint *ascii_color_arrayJ = env->GetIntArrayElements(ascii_color_array, nullptr);
+    jint *ascii_index_arrayJ = env->GetIntArrayElements(ascii_index_array, nullptr);
 
     jint arraySize = text_size_int * text_size_int;
     jint xStart = x * text_size_int;
@@ -35,7 +41,7 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reduceP
     for (jint i = yStart; i < yEnd; i++) {
         for (jint j = i * width + xStart; j < i * width + xEnd; j++) {
 
-            jint index = offset * i;
+            jint index = offset * j;
 
             r += static_cast<uint8_t>(pixelsJ[index]);
             g += static_cast<uint8_t>(pixelsJ[index + 1]);
@@ -52,9 +58,18 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reduceP
 
     env->ReleaseByteArrayElements(int_array, pixelsJ, 0);
 
-    return (a << 24) | (r << 16) | (g << 8) | b;
+    jint result = (a << 24) | (r << 16) | (g << 8) | b;
+    jint densityIndex = calculateDensityIndexNative(result, density_length);
+    jint index = x + text_bitmap_width * y;
 
+    ascii_color_arrayJ[index] = result;
+    ascii_index_arrayJ[index] = densityIndex;
+
+    env->ReleaseIntArrayElements(ascii_index_array, ascii_index_arrayJ, 0);
+    env->ReleaseIntArrayElements(ascii_color_array, ascii_color_arrayJ, 0);
 }
+
+
 
 
 extern "C" jint
@@ -179,6 +194,14 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_addToRe
 
 }
 
+jint calculateDensityIndexNative(jint pixel,
+        jint densityLength) {
+
+    jdouble brightness = calculateLuminanceNative(pixel);
+    jint charIndex = mapNative((float) brightness, 0, 1, 0, densityLength);
+    return densityLength - charIndex - 1;
+}
+
 extern "C" jint
 Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_calculateDensityIndexNative(
         JNIEnv *env, jobject,
@@ -253,4 +276,3 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_convert
     env->ReleaseIntArrayElements(jcolorOutput, rgbData, 0);
 
 }
-

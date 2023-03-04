@@ -114,9 +114,9 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        asciiGenerator.generatedBitmapState.observe(lifecycleScope){
+        /*asciiGenerator.generatedBitmapState.observe(lifecycleScope) {
             binding.image.setImageBitmap(it)
-        }
+        }*/
 
         init()
         setClickListeners()
@@ -504,9 +504,17 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         }, ContextCompat.getMainExecutor(this))
     }
 
+    var isWidthAndHeightSet = false
+
     private fun generateTextView(imageProxy: ImageProxy) {
         lifecycleScope.launch {
-            asciiGenerator.imageProxyToTextBitmap(imageProxy)
+            if (!isWidthAndHeightSet) {
+                asciiGenerator.setWidthAndHeight(imageProxy.width, imageProxy.height)
+                isWidthAndHeightSet = true
+            }
+            binding.image.setImageBitmap(
+                asciiGenerator.imageProxyToTextBitmap(imageProxy)
+            )
         }
         /*lifecycleScope.launch {
             asciiGenerator.filterPixelToCharIntArrayTest(Color.DKGRAY).let {

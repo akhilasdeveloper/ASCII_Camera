@@ -24,6 +24,6 @@ class RuntimeCalculator {
         if (max < diff)
             maxTime[key] = diff
 
-        Timber.d("RuntimeCalculator $key:: min:${minTime[key]}|max:${maxTime[key]}")
+        Timber.d("RuntimeCalculator $key:: curr:$diff|min:${minTime[key]}|max:${maxTime[key]}")
     }
 }
