@@ -48,9 +48,7 @@ import com.flask.colorpicker.builder.ColorPickerClickListener
 import com.flask.colorpicker.builder.ColorPickerDialogBuilder
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.IOException
 import java.io.InputStream
@@ -421,6 +419,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         initPermission()
         viewModel = ViewModelProvider(this@MainActivity)[MainViewModel::class.java]
         cameraExecutor = Executors.newSingleThreadExecutor()
+        asciiGenerator.setDispatcher(cameraExecutor.asCoroutineDispatcher())
         textCanvasView = binding.gridViewHolder
         textCanvasView.rotateDegree = 90f
 
@@ -512,8 +511,9 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
                 asciiGenerator.setWidthAndHeight(imageProxy.width, imageProxy.height)
                 isWidthAndHeightSet = true
             }
+            val bitmap = asciiGenerator.imageProxyToTextBitmap(imageProxy)
             binding.image.setImageBitmap(
-                asciiGenerator.imageProxyToTextBitmap(imageProxy)
+                bitmap
             )
         }
         /*lifecycleScope.launch {
