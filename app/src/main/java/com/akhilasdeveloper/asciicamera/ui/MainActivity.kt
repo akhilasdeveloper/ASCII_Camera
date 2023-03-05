@@ -14,6 +14,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.view.Surface
+import android.view.Surface.ROTATION_180
+import android.view.Surface.ROTATION_90
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
@@ -527,6 +530,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         return ImageAnalysis.Builder()
             .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setTargetRotation(Surface.ROTATION_90)
             .build().apply {
                 setAnalyzer(cameraExecutor) { imageProxy ->
                     generateTextView(imageProxy)

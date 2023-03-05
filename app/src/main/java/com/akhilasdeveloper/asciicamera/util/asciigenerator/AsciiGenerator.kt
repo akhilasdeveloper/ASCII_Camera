@@ -6,8 +6,6 @@ import androidx.camera.core.ImageProxy
 import androidx.core.graphics.ColorUtils
 import com.akhilasdeveloper.asciicamera.util.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
 import timber.log.Timber
 import java.nio.ByteBuffer
 
@@ -209,30 +207,64 @@ class AsciiGenerator() {
 
             Timber.d("textBitmapWidth:textBitmapHeight $textBitmapWidth:$textBitmapHeight")
 
+            /*generateResultNative(
+                asciiIndexArray,
+                asciiIndexArray.size,
+                textBitmapWidth,
+                textSizeInt,
+                densityIntArray,
+                resultArray,
+                width,
+                Color.WHITE,
+                Color.BLACK
+            )*/
+
+            val job1: ArrayList<Deferred<Unit>> = arrayListOf()
+
             asciiIndexArray.forEachIndexed { index, i ->
-                val x = xFromOneD(index, textBitmapWidth)
-                val y = yFromOneD(index, textBitmapWidth)
-                val sliceStart = i * textSizeInt * textSizeInt
-                val sliceEnd = sliceStart + (textSizeInt * textSizeInt)
-                addToResultArray(
-                    x,
-                    y,
-                    width,
-                    textSizeInt,
-                    densityIntArray.sliceArray(sliceStart until sliceEnd),
-                    resultArray
-                )
+                job1.add(GlobalScope.async {
+                    val x = xFromOneD(index, textBitmapWidth)
+                    val y = yFromOneD(index, textBitmapWidth)
+                    val sliceStart = i * textSizeInt * textSizeInt
+                    val sliceEnd = sliceStart + (textSizeInt * textSizeInt)
+                    addToResultArray(
+                        x,
+                        y,
+                        width,
+                        textSizeInt,
+                        densityIntArray.sliceArray(sliceStart until sliceEnd),
+                        resultArray
+                    )
+                })
             }
 
-            val newBitmap = Bitmap.createBitmap(
+            job1.awaitAll()
+
+            val ma = Matrix()
+//            ma.preScale(-1f, 1f)
+            ma.postRotate(90f)
+            val newBitmap = Bitmap.createBitmap(Bitmap.createBitmap(
                 resultArray,
                 width,
                 height,
                 Bitmap.Config.ARGB_8888
-            )
+            ),0,0,width,
+                height, ma, false)
 
             newBitmap
         }
+
+    private external fun generateResultNative(
+        asciiIndexArray: IntArray,
+        asciiIndexArraySize: Int,
+        textBitmapWidth: Int,
+        textSizeInt: Int,
+        densityIntArray: ByteArray,
+        resultArray: IntArray,
+        resultWidth: Int,
+        white: Int,
+        black: Int
+    )
 
     private fun reducePixels(
         x: Int,
@@ -324,7 +356,7 @@ class AsciiGenerator() {
         }
     }
 
-    suspend fun imageProxyToTextBitmap(imageProxy: ImageProxy) = withContext(dispatcher) {
+    suspend fun imageProxyToTextBitmap(imageProxy: ImageProxy): Bitmap? = withContext(dispatcher) {
 
         runtimeCalculator.start("imageProxyToTextBitmap")
 

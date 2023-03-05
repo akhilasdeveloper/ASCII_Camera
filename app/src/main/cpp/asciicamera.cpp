@@ -13,6 +13,9 @@ jint mapNative(jfloat value,
 
 jint calculateDensityIndexNative(jint pixel, jint length);
 
+void addToResultArrayNative(jint x, jint y, jint width, jint anInt, jint color, jint color1,
+                            const jbyte slice[], jint *pInt);
+
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reducePixelsNative(
@@ -194,8 +197,10 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_addToRe
 
 }
 
+
+
 jint calculateDensityIndexNative(jint pixel,
-        jint densityLength) {
+                                 jint densityLength) {
 
     jdouble brightness = calculateLuminanceNative(pixel);
     jint charIndex = mapNative((float) brightness, 0, 1, 0, densityLength);
@@ -274,5 +279,69 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_convert
     // Release the input and output arrays
     env->ReleaseByteArrayElements(rgbaData, data, 0);
     env->ReleaseIntArrayElements(jcolorOutput, rgbData, 0);
+
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_generateResultNative(
+        JNIEnv *env,
+        jobject thiz,
+        jintArray ascii_index_array,
+        jint ascii_index_array_size,
+        jint text_bitmap_width,
+        jint text_size_int,
+        jbyteArray density_int_array,
+        jintArray result_array,
+        jint result_width,
+        jint fg_color,
+        jint bg_color) {
+
+    jbyte *density_int_arrayJ = env->GetByteArrayElements(density_int_array, nullptr);
+    jint *ascii_index_arrayJ = env->GetIntArrayElements(ascii_index_array, nullptr);
+    jint *result_arrayJ = env->GetIntArrayElements(result_array, nullptr);
+    jbyte slice[text_size_int * text_size_int];
+
+    for (jint index = 0; index < ascii_index_array_size; index++) {
+        jint i = ascii_index_arrayJ[index];
+        jint x = index % text_bitmap_width;
+        jint y = index / text_bitmap_width;
+        jint sliceStart = i * text_size_int * text_size_int;
+        jint sliceEnd = sliceStart + (text_size_int * text_size_int);
+
+        for (jint index1 = sliceStart; index1 < sliceEnd; ++index1) {
+            slice[index1 - sliceStart] = density_int_arrayJ[index1];
+        }
+
+        addToResultArrayNative(x, y, result_width, text_size_int, bg_color, fg_color, slice, result_arrayJ);
+
+    }
+
+    env->ReleaseByteArrayElements(density_int_array, density_int_arrayJ, 0);
+    env->ReleaseIntArrayElements(ascii_index_array, ascii_index_arrayJ, 0);
+    env->ReleaseIntArrayElements(result_array, result_arrayJ, 0);
+
+}
+
+
+
+void
+addToResultArrayNative(
+        jint x,
+        jint y,
+        jint width,
+        jint textSizeInt,
+        jint bgColor,
+        jint fgColor,
+        const jbyte arrayJ[],
+        jint* resultArrayJ) {
+
+    for (int ind = 0; ind < textSizeInt * textSizeInt; ++ind) {
+        jbyte b = arrayJ[ind];
+        jint xx = ind % textSizeInt;
+        jint yy = ind / textSizeInt;
+        jint mainIndex = ((x * textSizeInt) + xx) + width * ((y * textSizeInt) + yy);
+        resultArrayJ[mainIndex] = (b) ? fgColor : bgColor;
+    }
 
 }
