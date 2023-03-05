@@ -93,8 +93,7 @@ class AsciiGenerator() {
         )
         val paint = TextPaint()
         val textBounds: Rect = Rect()
-        paint.textSize = textSize
-        paint.isAntiAlias = false
+        paint.textSize = textSize - 1
         paint.color = Color.WHITE
         canvas.setBitmap(bitmap)
         canvas.drawColor(Color.BLACK)

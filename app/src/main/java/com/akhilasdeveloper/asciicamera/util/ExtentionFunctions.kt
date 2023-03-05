@@ -2,6 +2,7 @@ package com.akhilasdeveloper.asciicamera.util
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.graphics.Matrix
 import androidx.camera.core.ImageProxy
 import androidx.core.graphics.get
