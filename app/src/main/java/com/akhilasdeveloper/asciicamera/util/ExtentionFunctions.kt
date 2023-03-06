@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.nio.ByteBuffer
 
 internal val Context.userPreferencesDataStore: DataStore<Preferences> by preferencesDataStore(
@@ -84,6 +85,30 @@ fun IntArray.getSubPixels(
         subArray.addAll(row.toList())
     }
     return subArray.toIntArray()
+}
+
+fun rotateByteArrayImage(
+    outPutArray: IntArray,
+    rotatedArray: IntArray,
+    width: Int,
+    height: Int
+) {
+    for (x in 0 until width) {
+        for (y in 0 until height) {
+
+            val destX = width - y
+            val destY = x
+            // Calculate the source and destination indices
+            val srcIndex = (y * width + x) * 2
+            val destIndex = (destY * height + destX) * 2
+            Timber.d("image width:height:x:y $width:$height:$x:$y")
+
+            // Copy the pixel values from the source to the destination
+            rotatedArray[destIndex] =
+                outPutArray[srcIndex]
+            rotatedArray[destIndex + 1] = outPutArray[srcIndex + 1]
+        }
+    }
 }
 
 fun ByteArray.getSubPixels(

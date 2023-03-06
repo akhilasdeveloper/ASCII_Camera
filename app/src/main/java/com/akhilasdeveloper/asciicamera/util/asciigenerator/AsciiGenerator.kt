@@ -240,16 +240,12 @@ class AsciiGenerator() {
 
             job1.awaitAll()
 
-            val ma = Matrix()
-//            ma.preScale(-1f, 1f)
-            ma.postRotate(90f)
-            val newBitmap = Bitmap.createBitmap(Bitmap.createBitmap(
-                resultArray,
-                width,
-                height,
-                Bitmap.Config.ARGB_8888
-            ),0,0,width,
-                height, ma, false)
+            val newBitmap = Bitmap.createBitmap(
+            resultArray,
+            width,
+            height,
+            Bitmap.Config.ARGB_8888
+            )
 
             newBitmap
         }
@@ -366,11 +362,51 @@ class AsciiGenerator() {
         val outPutArray = convertByteBufferToByteArray(buffer)
         imageProxy.close()
 
-        val textBitmap = rgbArrayToTextBitmap(outPutArray, width)
+        Timber.d("image width:height $width:$height")
+        val rotatedArray = ByteArray(outPutArray.size)
+        rotateByteArrayImage(outPutArray, rotatedArray, width, height)
+
+        val temp = width
+        width = height
+        height = temp
+
+        val textBitmap = rgbArrayToTextBitmap(rotatedArray, width)
         runtimeCalculator.finish("imageProxyToTextBitmap")
 
         textBitmap
 
+    }
+
+    private fun rotateByteArrayImage(
+        outPutArray: ByteArray,
+        rotatedArray: ByteArray,
+        width: Int,
+        height: Int
+    ) {
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+
+                val destX = width - y
+                val destY = x
+                // Calculate the source and destination indices
+                val srcIndex = (y * width + x) * 4
+                val destIndex = (destY * height + destX) * 4
+
+                Timber.d("image width:height:x:y $width:$height:$x:$y")
+
+                // Copy the pixel values from the source to the destination
+                try {
+                    rotatedArray[destIndex] =
+                        outPutArray[srcIndex]
+                    rotatedArray[destIndex + 1] = outPutArray[srcIndex + 1]
+                    rotatedArray[destIndex + 2] = outPutArray[srcIndex + 2]
+                    rotatedArray[destIndex + 3] = outPutArray[srcIndex + 3]
+                }catch (e:ArrayIndexOutOfBoundsException){
+                    Timber.d("Error image width:height:x:y $width:$height:$x:$y")
+                }
+
+            }
+        }
     }
 
     private fun convertByteBufferToByteArray(buffer: ByteBuffer): ByteArray {
