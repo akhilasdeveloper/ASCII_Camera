@@ -506,14 +506,8 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         }, ContextCompat.getMainExecutor(this))
     }
 
-    var isWidthAndHeightSet = false
-
     private fun generateTextView(imageProxy: ImageProxy) {
         lifecycleScope.launch {
-            if (!isWidthAndHeightSet) {
-                asciiGenerator.setWidthAndHeight(imageProxy.width, imageProxy.height)
-                isWidthAndHeightSet = true
-            }
             val bitmap = asciiGenerator.imageProxyToTextBitmap(imageProxy)
             binding.image.setImageBitmap(
                 bitmap

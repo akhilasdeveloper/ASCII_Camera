@@ -323,6 +323,49 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_generat
 
 }
 
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_generateResultNative2(
+        JNIEnv *env,
+        jobject thiz,
+        jintArray ascii_index_array,
+        jint ascii_index_array_size,
+        jint text_bitmap_width,
+        jint text_bitmap_height,
+        jint text_size_int,
+        jbyteArray density_int_array,
+        jintArray result_array,
+        jint result_width,
+        jint fg_color,
+        jint bg_color) {
+
+    jbyte *density_int_arrayJ = env->GetByteArrayElements(density_int_array, nullptr);
+    jint *ascii_index_arrayJ = env->GetIntArrayElements(ascii_index_array, nullptr);
+    jint *result_arrayJ = env->GetIntArrayElements(result_array, nullptr);
+
+    for(jint index = 0; index < (text_size_int * text_size_int * text_bitmap_width * text_bitmap_height); index++){
+        jint x = index % result_width;
+        jint y = index / result_width;
+
+        jint asciiIndexX = x / text_size_int;
+        jint asciiIndexY = y / text_size_int;
+        jint asciiIndexIndex = asciiIndexX + text_bitmap_width * asciiIndexY;
+        jint asciiIndex = ascii_index_arrayJ[asciiIndexIndex];
+
+        jint asciiArrayIndexX = x % text_size_int;
+        jint asciiArrayIndexY = y % text_size_int;
+        jint asciiArrayIndex = asciiArrayIndexX + text_size_int * asciiArrayIndexY;
+        jbyte ascii = density_int_arrayJ[asciiArrayIndex + (asciiIndex * text_size_int * text_size_int)];
+
+        result_arrayJ[index] = (ascii) ? fg_color : bg_color;
+    }
+
+    env->ReleaseByteArrayElements(density_int_array, density_int_arrayJ, 0);
+    env->ReleaseIntArrayElements(ascii_index_array, ascii_index_arrayJ, 0);
+    env->ReleaseIntArrayElements(result_array, result_arrayJ, 0);
+
+}
+
 
 
 void

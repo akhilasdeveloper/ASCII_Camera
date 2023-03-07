@@ -63,7 +63,7 @@ class AsciiGenerator() {
 
     private var _densityIntArray: ByteArray = byteArrayOf()
 
-    private val densityIntArray: ByteArray
+    private val densityByteArray: ByteArray
         get() {
             if (_densityIntArray.isEmpty())
                 _densityIntArray = generateDensityBytes()
@@ -71,16 +71,19 @@ class AsciiGenerator() {
             return _densityIntArray
         }
 
-    fun setWidthAndHeight(width: Int, height: Int) {
-        this.width = width
-        this.height = height
+    private fun setWidthAndHeight(width: Int, height: Int) {
+        if (this.width != width || this.height != height) {
 
-        textBitmapWidth = width / textSizeInt
-        textBitmapHeight = height / textSizeInt
+            this.width = width
+            this.height = height
 
-        resultArray = IntArray(width * height)
-        asciiIndexArray = IntArray(textBitmapWidth * textBitmapHeight)
-        asciiColorArray = IntArray(textBitmapWidth * textBitmapHeight)
+            textBitmapWidth = width / textSizeInt
+            textBitmapHeight = height / textSizeInt
+
+            resultArray = IntArray(this.width * this.height)
+            asciiIndexArray = IntArray(textBitmapWidth * textBitmapHeight)
+            asciiColorArray = IntArray(textBitmapWidth * textBitmapHeight)
+        }
     }
 
     private fun generateDensityBytes(): ByteArray {
@@ -207,19 +210,31 @@ class AsciiGenerator() {
 
             Timber.d("textBitmapWidth:textBitmapHeight $textBitmapWidth:$textBitmapHeight")
 
-            /*generateResultNative(
+            generateResultNative2(
                 asciiIndexArray,
                 asciiIndexArray.size,
                 textBitmapWidth,
+                textBitmapHeight,
                 textSizeInt,
-                densityIntArray,
+                densityByteArray,
+                resultArray,
+                width,
+                Color.WHITE,
+                Color.BLACK
+            )
+            /*generateResult(
+                asciiIndexArray,
+                textBitmapWidth,
+                textBitmapHeight,
+                textSizeInt,
+                densityByteArray,
                 resultArray,
                 width,
                 Color.WHITE,
                 Color.BLACK
             )*/
 
-            val job1: ArrayList<Deferred<Unit>> = arrayListOf()
+            /*val job1: ArrayList<Deferred<Unit>> = arrayListOf()
 
             asciiIndexArray.forEachIndexed { index, i ->
                 job1.add(GlobalScope.async {
@@ -238,22 +253,34 @@ class AsciiGenerator() {
                 })
             }
 
-            job1.awaitAll()
+            job1.awaitAll()*/
 
             val newBitmap = Bitmap.createBitmap(
-            resultArray,
-            width,
-            height,
-            Bitmap.Config.ARGB_8888
+                resultArray,
+                width,
+                height,
+                Bitmap.Config.ARGB_8888
             )
+
+            /*val bit = densityByteArray.map {
+                if (it != 0.toByte()) Color.WHITE else Color.BLACK
+            }.toIntArray()
+
+            val newBitmap = Bitmap.createBitmap(
+                bit.sliceArray(0 until textSizeInt * textSizeInt),
+                textSizeInt,
+                textSizeInt,
+                Bitmap.Config.ARGB_8888
+            )*/
 
             newBitmap
         }
 
-    private external fun generateResultNative(
+    private external fun generateResultNative2(
         asciiIndexArray: IntArray,
         asciiIndexArraySize: Int,
         textBitmapWidth: Int,
+        textBitmapHeight: Int,
         textSizeInt: Int,
         densityIntArray: ByteArray,
         resultArray: IntArray,
@@ -261,6 +288,40 @@ class AsciiGenerator() {
         white: Int,
         black: Int
     )
+
+    private fun generateResult(
+        ascii_index_array: IntArray, //8480
+        text_bitmap_width: Int, //106
+        text_bitmap_height: Int, //106
+        text_size_int: Int, //6
+        density_byte_array: ByteArray,
+        result_array: IntArray,
+        result_width: Int, //640
+        fg_color: Int,
+        bg_color: Int
+    ) {
+
+        for (index in 0 until (text_size_int * text_size_int * text_bitmap_width * text_bitmap_height)) { //307198
+
+                val x = index % result_width //638
+                val y = index / result_width //479
+
+                val asciiIndexX = x / text_size_int //106
+                val asciiIndexY = y / text_size_int //79
+                val asciiIndexIndex = asciiIndexX + text_bitmap_width * asciiIndexY //9555
+                val asciiIndex = ascii_index_array[asciiIndexIndex]
+
+                val asciiArrayIndexX = x % text_size_int
+                val asciiArrayIndexY = y % text_size_int
+                val asciiArrayIndex = asciiArrayIndexX + text_size_int * asciiArrayIndexY
+                val ascii =
+                    density_byte_array[asciiArrayIndex + (asciiIndex * text_size_int * text_size_int)]
+
+                result_array[index] = if (ascii != 0.toByte()) fg_color else bg_color
+
+        }
+
+    }
 
     private fun reducePixels(
         x: Int,
@@ -354,6 +415,8 @@ class AsciiGenerator() {
 
     suspend fun imageProxyToTextBitmap(imageProxy: ImageProxy): Bitmap? = withContext(dispatcher) {
 
+        setWidthAndHeight(imageProxy.width, imageProxy.height)
+
         runtimeCalculator.start("imageProxyToTextBitmap")
 
         val planes = imageProxy.planes
@@ -363,14 +426,14 @@ class AsciiGenerator() {
         imageProxy.close()
 
         Timber.d("image width:height $width:$height")
-        val rotatedArray = ByteArray(outPutArray.size)
-        rotateByteArrayImage(outPutArray, rotatedArray, width, height)
+        /*val rotatedArray = ByteArray(outPutArray.size)
+        rotateByteArrayImage(outPutArray, rotatedArray, width, height)*/
 
-        val temp = width
+        /*val temp = width
         width = height
-        height = temp
+        height = temp*/
 
-        val textBitmap = rgbArrayToTextBitmap(rotatedArray, width)
+        val textBitmap = rgbArrayToTextBitmap(outPutArray, width)
         runtimeCalculator.finish("imageProxyToTextBitmap")
 
         textBitmap
@@ -401,7 +464,7 @@ class AsciiGenerator() {
                     rotatedArray[destIndex + 1] = outPutArray[srcIndex + 1]
                     rotatedArray[destIndex + 2] = outPutArray[srcIndex + 2]
                     rotatedArray[destIndex + 3] = outPutArray[srcIndex + 3]
-                }catch (e:ArrayIndexOutOfBoundsException){
+                } catch (e: ArrayIndexOutOfBoundsException) {
                     Timber.d("Error image width:height:x:y $width:$height:$x:$y")
                 }
 

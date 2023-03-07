@@ -129,6 +129,39 @@ fun ByteArray.getSubPixels(
     return subArray.toByteArray()
 }
 
+fun generateResult(
+    ascii_index_array: IntArray,
+    text_bitmap_width: Int,
+    text_size_int: Int,
+    density_byte_array: IntArray,
+    result_array: IntArray,
+    result_size: Int,
+    result_width: Int
+) {
+
+    for (index in 0 until result_size) { //60
+
+        val x = index % result_width //4
+        val y = index / result_width //479
+
+        val asciiIndexX = x / text_size_int //106
+        val asciiIndexY = y / text_size_int //79
+        val asciiIndexIndex = asciiIndexX + text_bitmap_width * asciiIndexY //9555
+        val asciiIndex = ascii_index_array[asciiIndexIndex]
+
+        val asciiArrayIndexX = x % text_size_int
+        val asciiArrayIndexY = y % text_size_int
+        val asciiArrayIndex = asciiArrayIndexX + text_size_int * asciiArrayIndexY
+
+        val ascii =
+            density_byte_array[asciiArrayIndex + (asciiIndex * text_size_int * text_size_int)]
+
+        result_array[index] = ascii
+
+    }
+
+}
+
 fun ImageProxy.toBitmap(): Bitmap? {
     val planes = planes
     val buffer: ByteBuffer = planes[0].buffer
