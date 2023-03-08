@@ -2,8 +2,6 @@ package com.akhilasdeveloper.asciicamera.util
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Color
-import android.graphics.Matrix
 import androidx.camera.core.ImageProxy
 import androidx.core.graphics.get
 import androidx.datastore.core.DataStore
@@ -158,6 +156,45 @@ fun generateResult(
 
         result_array[index] = ascii
 
+    }
+
+}
+
+fun reducePixels2(
+    width: Int,
+    textBitmapWidth: Int,
+    textSizeInt: Int,
+    intArray: IntArray,
+    asciiColorArray: IntArray,
+    height: Int
+) {
+
+    val arraySize: Int = textSizeInt * textSizeInt
+    val rowArray = IntArray(textBitmapWidth * 2)
+
+    for (index in 0 until 60) {
+        val y = index / width
+        val x = index % width
+        val col = x / textSizeInt
+        val row = y / textSizeInt
+
+        val i1 = index * 2
+        val v1 = intArray[i1]
+        rowArray[col * 2] += v1
+        val i2 = index * 2 + 1
+        val v2 = intArray[i2]
+        rowArray[col * 2 + 1] += v2
+
+        if ((y + 1) % textSizeInt == 0 && (x + 1) % textSizeInt == 0) {
+            val r = rowArray[col * 2]
+            val g = rowArray[col * 2 + 1]
+
+            rowArray[col * 2] = 0
+            rowArray[col * 2 + 1] = 0
+
+            val ind = col + textBitmapWidth * row
+            asciiColorArray[ind] = r + g
+        }
     }
 
 }

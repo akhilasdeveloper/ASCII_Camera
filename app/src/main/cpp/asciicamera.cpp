@@ -13,8 +13,64 @@ jint mapNative(jfloat value,
 
 jint calculateDensityIndexNative(jint pixel, jint length);
 
-void addToResultArrayNative(jint x, jint y, jint width, jint anInt, jint color, jint color1,
-                            const jbyte slice[], jint *pInt);
+void addToResultArrayNative(jint x, jint y, jint width, jint textSizeInt, jint color, jint fgColor,
+                            const jbyte arrayJ[], jint *resultArrayJ);
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reducePixelsNative2(
+        JNIEnv *env, jobject thiz,
+        jint width,
+        jint height,
+        jint text_bitmap_width,
+        jint text_size_int,
+        jbyteArray int_array,
+        jintArray ascii_color_array,
+        jintArray ascii_index_array,
+        jint density_length) {
+
+    jbyte *pixelsJ = env->GetByteArrayElements(int_array, nullptr);
+    jint *ascii_color_arrayJ = env->GetIntArrayElements(ascii_color_array, nullptr);
+    jint *ascii_index_arrayJ = env->GetIntArrayElements(ascii_index_array, nullptr);
+
+    jint arraySize = text_size_int * text_size_int;
+    jint rowArray[text_bitmap_width * 4];
+
+    for (jint index = 0; index < width*height; index ++) {
+        jint y = index / width;
+        jint x = index % width;
+        jint col = x / text_size_int;
+        jint row = y / text_size_int;
+        jint rowArrayCol = col * 4;
+
+        rowArray[rowArrayCol] += static_cast<uint8_t>(pixelsJ[index * 4]);
+        rowArray[rowArrayCol + 1] += static_cast<uint8_t>(pixelsJ[index * 4 + 1]);
+        rowArray[rowArrayCol + 2] += static_cast<uint8_t>(pixelsJ[index * 4 + 2]);
+        rowArray[rowArrayCol + 2] += static_cast<uint8_t>(pixelsJ[index * 4 + 3]);
+
+        if ((y + 1) % text_size_int == 0 && (x + 1) % text_size_int == 0) {
+            jint r = rowArray[rowArrayCol] / arraySize;
+            jint g = rowArray[rowArrayCol + 1] / arraySize;
+            jint b = rowArray[rowArrayCol + 2] / arraySize;
+            jint a = rowArray[rowArrayCol + 3] / arraySize;
+
+            rowArray[rowArrayCol] = 0;
+            rowArray[rowArrayCol + 1] = 0;
+            rowArray[rowArrayCol + 2] = 0;
+            rowArray[rowArrayCol + 3] = 0;
+
+            jint result = (a << 24) | (r << 16) | (g << 8) | b;
+            jint densityIndex = calculateDensityIndexNative(result, density_length);
+            jint ind = col + text_bitmap_width * row;
+            ascii_color_arrayJ[ind] = result;
+            ascii_index_arrayJ[ind] = densityIndex;
+        }
+    }
+
+    env->ReleaseByteArrayElements(int_array, pixelsJ, 0);
+    env->ReleaseIntArrayElements(ascii_index_array, ascii_index_arrayJ, 0);
+    env->ReleaseIntArrayElements(ascii_color_array, ascii_color_arrayJ, 0);
+}
 
 extern "C"
 JNIEXPORT void JNICALL
@@ -198,7 +254,6 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_addToRe
 }
 
 
-
 jint calculateDensityIndexNative(jint pixel,
                                  jint densityLength) {
 
@@ -313,7 +368,8 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_generat
             slice[index1 - sliceStart] = density_int_arrayJ[index1];
         }
 
-        addToResultArrayNative(x, y, result_width, text_size_int, bg_color, fg_color, slice, result_arrayJ);
+        addToResultArrayNative(x, y, result_width, text_size_int, bg_color, fg_color, slice,
+                               result_arrayJ);
 
     }
 
@@ -343,7 +399,8 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_generat
     jint *ascii_index_arrayJ = env->GetIntArrayElements(ascii_index_array, nullptr);
     jint *result_arrayJ = env->GetIntArrayElements(result_array, nullptr);
 
-    for(jint index = 0; index < (text_size_int * text_size_int * text_bitmap_width * text_bitmap_height); index++){
+    for (jint index = 0; index < (text_size_int * text_size_int * text_bitmap_width *
+                                  text_bitmap_height); index++) {
         jint x = index % result_width;
         jint y = index / result_width;
 
@@ -355,7 +412,8 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_generat
         jint asciiArrayIndexX = x % text_size_int;
         jint asciiArrayIndexY = y % text_size_int;
         jint asciiArrayIndex = asciiArrayIndexX + text_size_int * asciiArrayIndexY;
-        jbyte ascii = density_int_arrayJ[asciiArrayIndex + (asciiIndex * text_size_int * text_size_int)];
+        jbyte ascii = density_int_arrayJ[asciiArrayIndex +
+                                         (asciiIndex * text_size_int * text_size_int)];
 
         result_arrayJ[index] = (ascii) ? fg_color : bg_color;
     }
@@ -367,7 +425,6 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_generat
 }
 
 
-
 void
 addToResultArrayNative(
         jint x,
@@ -377,7 +434,7 @@ addToResultArrayNative(
         jint bgColor,
         jint fgColor,
         const jbyte arrayJ[],
-        jint* resultArrayJ) {
+        jint *resultArrayJ) {
 
     for (int ind = 0; ind < textSizeInt * textSizeInt; ++ind) {
         jbyte b = arrayJ[ind];
@@ -387,4 +444,28 @@ addToResultArrayNative(
         resultArrayJ[mainIndex] = (b) ? fgColor : bgColor;
     }
 
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_cropArrayNative(
+        JNIEnv *env, jobject thiz, jbyteArray out_put_array, jint out_put_array_size, jint width,
+        jbyteArray cropped_array, jint width1, jint height1) {
+
+    jbyte *out_put_arrayJ = env->GetByteArrayElements(out_put_array, nullptr);
+    jbyte *cropped_arrayJ = env->GetByteArrayElements(cropped_array, nullptr);
+
+    for (jint index = 0; index < out_put_array_size; index++) {
+        jbyte byte = out_put_arrayJ[index];
+        jint x = index % (width * 4);
+        jint y = index / (width * 4);
+        jint ind = x + width1 * 4 * y;
+        if (x >= width1 * 4 || y >= height1)
+            continue;
+
+        cropped_arrayJ[ind] = byte;
+    }
+
+    env->ReleaseByteArrayElements(cropped_array, cropped_arrayJ, 0);
+    env->ReleaseByteArrayElements(out_put_array, out_put_arrayJ, 0);
 }

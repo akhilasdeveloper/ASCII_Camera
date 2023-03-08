@@ -2,12 +2,12 @@ package com.akhilasdeveloper.asciicamera
 
 import com.akhilasdeveloper.asciicamera.util.generateResult
 import com.akhilasdeveloper.asciicamera.util.getSubPixels
+import com.akhilasdeveloper.asciicamera.util.reducePixels2
 import com.akhilasdeveloper.asciicamera.util.rotateByteArrayImage
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
-import timber.log.Timber
 
 @RunWith(JUnit4::class)
 class AsciiGeneratorTest {
@@ -97,6 +97,38 @@ class AsciiGeneratorTest {
             result_array = resultArray,
             result_size = 60,
             result_width = 10
+        )
+
+        assertThat(resultArray).isEqualTo(answerArray)
+    }
+
+    @Test
+    fun testReducePixels() {
+
+        val resultArray = IntArray(15)
+
+        val intArray = intArrayOf(
+            1, 0, 2, 0, 0, 3, 2, 0, 1, 0, 0, 1, 0, 2, 3, 0, 0, 2, 0, 1,
+            0, 3, 2, 0, 1, 0, 2, 0, 0, 3, 3, 0, 0, 2, 0, 1, 0, 2, 3, 0,
+            1, 0, 2, 0, 0, 3, 2, 0, 1, 0, 0, 1, 0, 2, 3, 0, 0, 2, 0, 1,
+            1, 0, 2, 0, 0, 3, 2, 0, 1, 0, 0, 1, 0, 2, 3, 0, 0, 2, 0, 1,
+            0, 3, 2, 0, 1, 0, 2, 0, 0, 3, 3, 0, 0, 2, 0, 1, 0, 2, 3, 0,
+            1, 0, 2, 0, 0, 3, 2, 0, 1, 0, 0, 1, 0, 2, 3, 0, 0, 2, 0, 1
+        )
+
+        val answerArray = intArrayOf(
+            8, 8, 8, 8, 8,
+            6, 10, 4, 10, 6,
+            8, 8, 8, 8, 8
+        )
+
+        reducePixels2(
+            width = 10,
+            height = 6,
+            textBitmapWidth = 5,
+            textSizeInt = 2,
+            intArray = intArray,
+            asciiColorArray = resultArray
         )
 
         assertThat(resultArray).isEqualTo(answerArray)

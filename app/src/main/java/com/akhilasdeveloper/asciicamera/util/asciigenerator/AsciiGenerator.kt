@@ -37,8 +37,8 @@ class AsciiGenerator() {
     private var width = 0
     private var height = 0
 
-    private var textBitmapWidth = 0
-    private var textBitmapHeight = 0
+    private var textBitmapWidth = 1
+    private var textBitmapHeight = 1
 
     private var resultArray = IntArray(width * height)
     private var asciiIndexArray = IntArray(textBitmapWidth * textBitmapHeight)
@@ -72,13 +72,14 @@ class AsciiGenerator() {
         }
 
     private fun setWidthAndHeight(width: Int, height: Int) {
-        if (this.width != width || this.height != height) {
 
-            this.width = width
-            this.height = height
+        if (this.width != textBitmapWidth * textSizeInt || this.height != textBitmapHeight * textSizeInt) {
 
             textBitmapWidth = width / textSizeInt
             textBitmapHeight = height / textSizeInt
+
+            this.width = textBitmapWidth * textSizeInt
+            this.height = textBitmapHeight * textSizeInt
 
             resultArray = IntArray(this.width * this.height)
             asciiIndexArray = IntArray(textBitmapWidth * textBitmapHeight)
@@ -86,6 +87,11 @@ class AsciiGenerator() {
         }
     }
 
+    /**
+     * This function converts string density into byte array. First it draws all chars into a vertical canvas. It will be white on black background.
+     * Then it can be converted into a byte array. byte 1 representing white pixel and byte 0 representing black.
+     * Using this template we can generate chars in efficient way but sacrifices char quality.
+     */
     private fun generateDensityBytes(): ByteArray {
         val canvas = Canvas()
         val bitmap = Bitmap.createBitmap(
@@ -158,102 +164,58 @@ class AsciiGenerator() {
         resultArray: IntArray
     )
 
-    private fun convertRgbaToRgb(rgbaData: ByteArray, width: Int, height: Int): IntArray {
-        val rgbData = IntArray(width * height)
-        for ((pixelIndex, i) in (rgbaData.indices step 4).withIndex()) {
-            val r = rgbaData[i].toInt() and 0xff
-            val g = rgbaData[i + 1].toInt() and 0xff
-            val b = rgbaData[i + 2].toInt() and 0xff
-            val a = rgbaData[i + 3].toInt() and 0xff
-            rgbData[pixelIndex] = (a shl 24) or (r shl 16) or (g shl 8) or b
-        }
-        return rgbData
-    }
-
-    @OptIn(DelicateCoroutinesApi::class)
     private suspend fun rgbArrayToTextBitmap(intArray: ByteArray, width: Int) =
         withContext(dispatcher) {
 
-            val job: ArrayList<Deferred<Unit>> = arrayListOf()
+            if (isNativeLibAvailable){
+                reducePixelsNative2(
+                    width,
+                    height,
+                    textBitmapWidth,
+                    textSizeInt,
+                    intArray,
+                    asciiColorArray,
+                    asciiIndexArray,
+                    density.length
+                )
 
-            for (y in 0 until textBitmapHeight) {
-                for (x in 0 until textBitmapWidth)
-                    job.add(GlobalScope.async {
-                        if (isNativeLibAvailable)
-                            reducePixelsNative(
-                                x,
-                                y,
-                                width,
-                                textBitmapWidth,
-                                textSizeInt,
-                                intArray,
-                                asciiColorArray,
-                                asciiIndexArray,
-                                density.length
-                            )
-                        else
-                            reducePixels(
-                                x,
-                                y,
-                                width,
-                                textBitmapWidth,
-                                textSizeInt,
-                                intArray,
-                                asciiColorArray,
-                                asciiIndexArray,
-                                density.length
-                            )
-                    })
+                generateResultNative2(
+                    asciiIndexArray,
+                    asciiIndexArray.size,
+                    textBitmapWidth,
+                    textBitmapHeight,
+                    textSizeInt,
+                    densityByteArray,
+                    resultArray,
+                    width,
+                    fgColor,
+                    bgColor
+                )
+            }else{
+                reducePixels2(
+                    width,
+                    height,
+                    textBitmapWidth,
+                    textSizeInt,
+                    intArray,
+                    asciiColorArray,
+                    asciiIndexArray,
+                    density.length
+                )
+
+                generateResult(
+                    asciiIndexArray,
+                    textBitmapWidth,
+                    textBitmapHeight,
+                    textSizeInt,
+                    densityByteArray,
+                    resultArray,
+                    width,
+                    fgColor,
+                    bgColor
+                )
             }
 
-            job.awaitAll()
-
-            Timber.d("textBitmapWidth:textBitmapHeight $textBitmapWidth:$textBitmapHeight")
-
-            generateResultNative2(
-                asciiIndexArray,
-                asciiIndexArray.size,
-                textBitmapWidth,
-                textBitmapHeight,
-                textSizeInt,
-                densityByteArray,
-                resultArray,
-                width,
-                Color.WHITE,
-                Color.BLACK
-            )
-            /*generateResult(
-                asciiIndexArray,
-                textBitmapWidth,
-                textBitmapHeight,
-                textSizeInt,
-                densityByteArray,
-                resultArray,
-                width,
-                Color.WHITE,
-                Color.BLACK
-            )*/
-
-            /*val job1: ArrayList<Deferred<Unit>> = arrayListOf()
-
-            asciiIndexArray.forEachIndexed { index, i ->
-                job1.add(GlobalScope.async {
-                    val x = xFromOneD(index, textBitmapWidth)
-                    val y = yFromOneD(index, textBitmapWidth)
-                    val sliceStart = i * textSizeInt * textSizeInt
-                    val sliceEnd = sliceStart + (textSizeInt * textSizeInt)
-                    addToResultArray(
-                        x,
-                        y,
-                        width,
-                        textSizeInt,
-                        densityIntArray.sliceArray(sliceStart until sliceEnd),
-                        resultArray
-                    )
-                })
-            }
-
-            job1.awaitAll()*/
 
             val newBitmap = Bitmap.createBitmap(
                 resultArray,
@@ -262,18 +224,14 @@ class AsciiGenerator() {
                 Bitmap.Config.ARGB_8888
             )
 
-            /*val bit = densityByteArray.map {
-                if (it != 0.toByte()) Color.WHITE else Color.BLACK
-            }.toIntArray()
 
-            val newBitmap = Bitmap.createBitmap(
-                bit.sliceArray(0 until textSizeInt * textSizeInt),
-                textSizeInt,
-                textSizeInt,
-                Bitmap.Config.ARGB_8888
-            )*/
+            /*val matrix = Matrix()
+            matrix.postRotate(90f)
+
+            Bitmap.createBitmap(newBitmap, 0, 0, newBitmap.width, newBitmap.height, matrix, true)*/
 
             newBitmap
+
         }
 
     private external fun generateResultNative2(
@@ -285,48 +243,60 @@ class AsciiGenerator() {
         densityIntArray: ByteArray,
         resultArray: IntArray,
         resultWidth: Int,
-        white: Int,
-        black: Int
+        fgColor: Int,
+        bgColor: Int
     )
 
+    /**
+     * After getting the pixel index array and color details obtained from the reducePixels2 function, we will populate the result array from the density array template.
+     */
     private fun generateResult(
-        ascii_index_array: IntArray, //8480
-        text_bitmap_width: Int, //106
-        text_bitmap_height: Int, //106
-        text_size_int: Int, //6
+        ascii_index_array: IntArray,
+        text_bitmap_width: Int,
+        text_bitmap_height: Int,
+        text_size_int: Int,
         density_byte_array: ByteArray,
         result_array: IntArray,
-        result_width: Int, //640
+        result_width: Int,
         fg_color: Int,
         bg_color: Int
     ) {
 
-        for (index in 0 until (text_size_int * text_size_int * text_bitmap_width * text_bitmap_height)) { //307198
+        for (index in 0 until (text_size_int * text_size_int * text_bitmap_width * text_bitmap_height)) {
 
-                val x = index % result_width //638
-                val y = index / result_width //479
+            val x = index % result_width
+            val y = index / result_width
 
-                val asciiIndexX = x / text_size_int //106
-                val asciiIndexY = y / text_size_int //79
-                val asciiIndexIndex = asciiIndexX + text_bitmap_width * asciiIndexY //9555
-                val asciiIndex = ascii_index_array[asciiIndexIndex]
+            val asciiIndexX = x / text_size_int
+            val asciiIndexY = y / text_size_int
+            val asciiIndexIndex = asciiIndexX + text_bitmap_width * asciiIndexY
+            val asciiIndex = ascii_index_array[asciiIndexIndex]
 
-                val asciiArrayIndexX = x % text_size_int
-                val asciiArrayIndexY = y % text_size_int
-                val asciiArrayIndex = asciiArrayIndexX + text_size_int * asciiArrayIndexY
-                val ascii =
-                    density_byte_array[asciiArrayIndex + (asciiIndex * text_size_int * text_size_int)]
+            val asciiArrayIndexX = x % text_size_int
+            val asciiArrayIndexY = y % text_size_int
+            val asciiArrayIndex = asciiArrayIndexX + text_size_int * asciiArrayIndexY
+            val ascii =
+                density_byte_array[asciiArrayIndex + (asciiIndex * text_size_int * text_size_int)]
 
-                result_array[index] = if (ascii != 0.toByte()) fg_color else bg_color
+            result_array[index] = if (ascii != 0.toByte()) fg_color else bg_color
 
         }
 
     }
 
-    private fun reducePixels(
-        x: Int,
-        y: Int,
+    /**
+     * This function averages the pixels from byte array within the size of textSizeInt. using that result pixel, we will determine the density character.
+     *
+     * Density character is not drawn directly. We will first create a bitmap of all the characters arranged in vertical. And convert the bitmap into byte array.
+     * Means the character is drawn as black on white. we can consider byte 1 as white and byte 0 as black.
+     * If we convert the bitmap into byte array, we can store the pixels like this as 1 bit value. This will result better performance but will lose character quality.
+     *
+     * We will iterate through each positions of bytearray. each position will contain 4 values. rgba. We will add all the r,g,b,a values individually and take average.
+     * Using the average pixel, will will find the density index and stores to asciiIndexArray. Color value will be stored to asciiColorArray.
+     */
+    private fun reducePixels2(
         width: Int,
+        height: Int,
         textBitmapWidth: Int,
         textSizeInt: Int,
         intArray: ByteArray,
@@ -334,41 +304,53 @@ class AsciiGenerator() {
         asciiIndexArray: IntArray,
         densityLength: Int
     ) {
+
         val arraySize: Int = textSizeInt * textSizeInt
-        val xStart: Int = x * textSizeInt
-        val yStart: Int = y * textSizeInt
 
-        val yEnd: Int = yStart + textSizeInt
-        val xEnd: Int = xStart + textSizeInt
+        /**
+         * Byte array will contain 4 fields for each corresponding position of result array rgba. rowArray will calculate store averages of rgba in row wise.
+         * eg: first 4 position will store sum of rgba values separately of 1st pixels (width of textIntSize and height of textIntSize)
+         */
+        val rowArray = IntArray(textBitmapWidth * 4)
 
-        var a = 0
-        var r = 0
-        var g = 0
-        var b = 0
+        //loops through results array indexes
+        for (index in 0 until width*height) {
+            //Calculates x and y of the current result array index
+            val y = index / width
+            val x = index % width
 
-        val offset: Int = 4
+            //Calculates col and row of colorArray/asciiIndexArray
+            val col = x / textSizeInt
+            val row = y / textSizeInt
+            //multiplied by 4 because rgba values are represented.
+            val rowArrayCol = col * 4
 
-        for (i in yStart until yEnd) {
-            for (j in i * width + xStart until i * width + xEnd) {
-                val index: Int = offset * j
-                r += intArray[index].toInt() and 0xff
-                g += intArray[index + 1].toInt() and 0xff
-                b += intArray[index + 2].toInt() and 0xff
-                a += intArray[index + 3].toInt() and 0xff
+            rowArray[rowArrayCol] += intArray[index * 4].toInt() and 0xff
+            rowArray[rowArrayCol + 1] += intArray[index * 4 + 1].toInt() and 0xff
+            rowArray[rowArrayCol + 2] += intArray[index * 4 + 2].toInt() and 0xff
+            rowArray[rowArrayCol + 2] += intArray[index * 4 + 3].toInt() and 0xff
+
+            //If y and x reaches multiple of textSizeInt, it means it has the sum of required pixels for that position.
+            // Now we can calculate the average of the pixel and reset the rowArray values to 0 for calculating next row.
+            if ((y + 1) % textSizeInt == 0 && (x + 1) % textSizeInt == 0) {
+                val r = rowArray[rowArrayCol] / arraySize
+                val g = rowArray[rowArrayCol + 1] / arraySize
+                val b = rowArray[rowArrayCol + 2] / arraySize
+                val a = rowArray[rowArrayCol + 3] / arraySize
+
+                rowArray[rowArrayCol] = 0
+                rowArray[rowArrayCol + 1] = 0
+                rowArray[rowArrayCol + 2] = 0
+                rowArray[rowArrayCol + 3] = 0
+
+                val result = a shl 24 or (r shl 16) or (g shl 8) or b
+                val densityIndex = calculateDensityIndex(result, densityLength)
+                val ind = col + textBitmapWidth * row
+                asciiColorArray[ind] = result
+                asciiIndexArray[ind] = densityIndex
             }
         }
 
-        a /= arraySize
-        r /= arraySize
-        g /= arraySize
-        b /= arraySize
-
-        val result = a shl 24 or (r shl 16) or (g shl 8) or b
-        val densityIndex = calculateDensityIndex(result, densityLength)
-        val index = x + textBitmapWidth * y
-
-        asciiIndexArray[index] = densityIndex
-        asciiColorArray[index] = result
     }
 
     private external fun reducePixelsNative(
@@ -383,35 +365,17 @@ class AsciiGenerator() {
         densityLength: Int
     )
 
-    private fun addToResultArray(
-        x: Int,
-        y: Int,
+    private external fun reducePixelsNative2(
         width: Int,
+        height: Int,
+        textBitmapWidth: Int,
         textSizeInt: Int,
-        char: ByteArray,
-        resultArray: IntArray
-    ) {
-        if (isNativeLibAvailable) {
-            addToResultArrayNative(
-                x,
-                y,
-                width,
-                textSizeInt,
-                Color.BLACK,
-                Color.WHITE,
-                char,
-                resultArray
-            )
-        } else {
-            char.forEachIndexed { index, i ->
-                val xx = xFromOneD(index, textSizeInt)
-                val yy = yFromOneD(index, textSizeInt)
-                val mainIndex =
-                    TwoDtoOneD((x * textSizeInt) + xx, (y * textSizeInt) + yy, width)
-                resultArray[mainIndex] = if (i != 0.toByte()) Color.WHITE else Color.BLACK
-            }
-        }
-    }
+        intArray: ByteArray,
+        asciiColorArray: IntArray,
+        asciiIndexArray: IntArray,
+        densityLength: Int
+    )
+
 
     suspend fun imageProxyToTextBitmap(imageProxy: ImageProxy): Bitmap? = withContext(dispatcher) {
 
@@ -424,6 +388,18 @@ class AsciiGenerator() {
 
         val outPutArray = convertByteBufferToByteArray(buffer)
         imageProxy.close()
+        val croppedArray = ByteArray(width * height * 4)
+        if (isNativeLibAvailable)
+            cropArrayNative(
+                outPutArray,
+                outPutArray.size,
+                imageProxy.width,
+                croppedArray,
+                width,
+                height
+            )
+        else
+            cropArray(outPutArray, imageProxy.width, croppedArray, width, height)
 
         Timber.d("image width:height $width:$height")
         /*val rotatedArray = ByteArray(outPutArray.size)
@@ -433,10 +409,40 @@ class AsciiGenerator() {
         width = height
         height = temp*/
 
-        val textBitmap = rgbArrayToTextBitmap(outPutArray, width)
+        val textBitmap = rgbArrayToTextBitmap(croppedArray, width)
         runtimeCalculator.finish("imageProxyToTextBitmap")
 
         textBitmap
+
+    }
+
+    private external fun cropArrayNative(
+        outPutArray: ByteArray,
+        outPutArraySize: Int,
+        width: Int,
+        croppedArray: ByteArray,
+        width1: Int,
+        height1: Int
+    )
+
+    private fun cropArray(
+        outPutArray: ByteArray,
+        width: Int,
+        croppedArray: ByteArray,
+        width1: Int,
+        height1: Int
+    ) {
+
+        for ((index, byte) in outPutArray.withIndex()) {
+            val x = index % (width * 4)
+            val y = index / (width * 4)
+            val ind = x + width1 * 4 * y
+
+            if (x >= width1 * 4 || y >= height1)
+                continue
+
+            croppedArray[ind] = byte
+        }
 
     }
 
