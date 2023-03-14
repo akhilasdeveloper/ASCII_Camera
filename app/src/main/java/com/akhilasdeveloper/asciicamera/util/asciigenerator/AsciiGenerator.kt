@@ -5,6 +5,7 @@ import android.text.TextPaint
 import androidx.camera.core.ImageProxy
 import androidx.core.graphics.ColorUtils
 import com.akhilasdeveloper.asciicamera.util.*
+import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters.Companion.ANSI_RATIO
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.nio.ByteBuffer
@@ -142,7 +143,7 @@ class AsciiGenerator() {
     private suspend fun rgbArrayToTextBitmap(intArray: ByteArray, width: Int) =
         withContext(dispatcher) {
 
-            if (!isNativeLibAvailable){
+            if (isNativeLibAvailable){
                 reducePixelsNative2(
                     width,
                     height,
@@ -151,19 +152,21 @@ class AsciiGenerator() {
                     intArray,
                     asciiColorArray,
                     asciiIndexArray,
-                    density.length
+                    density.length,
+                    colorType,
+                    ANSI_RATIO,
+                    fgColor
                 )
 
                 generateResultNative2(
                     asciiIndexArray,
-                    asciiIndexArray.size,
+                    asciiColorArray,
                     textBitmapWidth,
                     textBitmapHeight,
                     textSizeInt,
                     densityByteArray,
                     resultArray,
                     width,
-                    fgColor,
                     bgColor
                 )
             }else{
@@ -175,7 +178,9 @@ class AsciiGenerator() {
                     intArray,
                     asciiColorArray,
                     asciiIndexArray,
-                    density.length
+                    density.length,
+                    colorType,
+                    fgColor
                 )
 
                 generateResult(
@@ -187,8 +192,6 @@ class AsciiGenerator() {
                     densityByteArray,
                     resultArray,
                     width,
-                    colorType,
-                    fgColor,
                     bgColor
                 )
             }
@@ -213,14 +216,13 @@ class AsciiGenerator() {
 
     private external fun generateResultNative2(
         asciiIndexArray: IntArray,
-        asciiIndexArraySize: Int,
+        asciiColorArray: IntArray,
         textBitmapWidth: Int,
         textBitmapHeight: Int,
         textSizeInt: Int,
         densityIntArray: ByteArray,
         resultArray: IntArray,
         resultWidth: Int,
-        fgColor: Int,
         bgColor: Int
     )
 
@@ -236,8 +238,6 @@ class AsciiGenerator() {
         density_byte_array: ByteArray,
         result_array: IntArray,
         result_width: Int,
-        color_type: Int,
-        fg_color: Int,
         bg_color: Int
     ) {
 
@@ -257,17 +257,7 @@ class AsciiGenerator() {
             val ascii =
                 density_byte_array[asciiArrayIndex + (asciiIndex * text_size_int * text_size_int)]
 
-            when(color_type){
-                AsciiFilters.COLOR_TYPE_NONE -> {
-                    result_array[index] = if (ascii != 0.toByte()) fg_color else bg_color
-                }
-                AsciiFilters.COLOR_TYPE_ANSI -> {
-
-                }
-                AsciiFilters.COLOR_TYPE_ORIGINAL -> {
-                    result_array[index] = if (ascii != 0.toByte()) ascii_color_array[asciiIndexIndex] else bg_color
-                }
-            }
+            result_array[index] = if (ascii != 0.toByte()) ascii_color_array[asciiIndexIndex] else bg_color
 
         }
 
@@ -291,7 +281,9 @@ class AsciiGenerator() {
         intArray: ByteArray,
         asciiColorArray: IntArray,
         asciiIndexArray: IntArray,
-        densityLength: Int
+        densityLength: Int,
+        colorType: Int,
+        fgColor: Int
     ) {
 
         val arraySize: Int = textSizeInt * textSizeInt
@@ -322,9 +314,9 @@ class AsciiGenerator() {
             //If y and x reaches multiple of textSizeInt, it means it has the sum of required pixels for that position.
             // Now we can calculate the average of the pixel and reset the rowArray values to 0 for calculating next row.
             if ((y + 1) % textSizeInt == 0 && (x + 1) % textSizeInt == 0) {
-                val r = rowArray[rowArrayCol] / arraySize
-                val g = rowArray[rowArrayCol + 1] / arraySize
-                val b = rowArray[rowArrayCol + 2] / arraySize
+                var r = rowArray[rowArrayCol] / arraySize
+                var g = rowArray[rowArrayCol + 1] / arraySize
+                var b = rowArray[rowArrayCol + 2] / arraySize
                 val a = rowArray[rowArrayCol + 3] / arraySize
 
                 rowArray[rowArrayCol] = 0
@@ -335,8 +327,32 @@ class AsciiGenerator() {
                 val result = a shl 24 or (r shl 16) or (g shl 8) or b
                 val densityIndex = calculateDensityIndex(result, densityLength)
                 val ind = col + textBitmapWidth * row
-                asciiColorArray[ind] = result
                 asciiIndexArray[ind] = densityIndex
+
+                if (colorType == AsciiFilters.COLOR_TYPE_NONE) {
+                    asciiColorArray[ind] = fgColor
+                    continue
+                }
+
+                if (colorType == AsciiFilters.COLOR_TYPE_ORIGINAL){
+                    asciiColorArray[ind] = result
+                    continue
+                }
+
+                if (colorType == AsciiFilters.COLOR_TYPE_ANSI){
+
+                    val maxRG: Int = if (r > g) r else g
+                    val maxColor = if (b > maxRG) b else maxRG
+                    if (maxColor > 0) {
+                        val threshold: Int = (maxColor * ANSI_RATIO).toInt()
+                        r = if (r >= threshold) r else 0
+                        g = if (g >= threshold) g else 0
+                        b = if (b >= threshold) b else 0
+                    }
+                    val ansiResult = a shl 24 or (r shl 16) or (g shl 8) or b
+                    asciiColorArray[ind] = ansiResult
+                }
+
             }
         }
 
@@ -351,7 +367,10 @@ class AsciiGenerator() {
         intArray: ByteArray,
         asciiColorArray: IntArray,
         asciiIndexArray: IntArray,
-        densityLength: Int
+        densityLength: Int,
+        colorType: Int,
+        ansiRatio: Float,
+        fgColor: Int
     )
 
 

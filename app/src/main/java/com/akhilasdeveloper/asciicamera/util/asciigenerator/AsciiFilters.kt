@@ -16,6 +16,7 @@ sealed class AsciiFilters {
         const val COLOR_TYPE_NONE = -1
         const val COLOR_TYPE_ANSI = -2
         const val COLOR_TYPE_ORIGINAL = -3
+        const val ANSI_RATIO = 7f/8
 
         data class CharData(
             val char: Char,
@@ -82,7 +83,7 @@ sealed class AsciiFilters {
             get() = "Black on white"
 
         override val density: String
-            get() = ":oOB@"
+            get() = ".:oOB@"
 
         override val fgColor = Color.BLACK
 

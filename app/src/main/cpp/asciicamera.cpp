@@ -24,7 +24,10 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reduceP
         jbyteArray int_array,
         jintArray ascii_color_array,
         jintArray ascii_index_array,
-        jint density_length) {
+        jint density_length,
+        jint color_type,
+        jfloat ansi_ratio,
+        jint fg_color) {
 
     jbyte *pixelsJ = env->GetByteArrayElements(int_array, nullptr);
     jint *ascii_color_arrayJ = env->GetIntArrayElements(ascii_color_array, nullptr);
@@ -59,8 +62,32 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reduceP
             jint result = (a << 24) | (r << 16) | (g << 8) | b;
             jint densityIndex = calculateDensityIndexNative(result, density_length);
             jint ind = col + text_bitmap_width * row;
-            ascii_color_arrayJ[ind] = result;
             ascii_index_arrayJ[ind] = densityIndex;
+
+            if (color_type == -1) {
+                ascii_color_arrayJ[ind] = fg_color;
+                continue;
+            }
+
+            if (color_type == -3){
+                ascii_color_arrayJ[ind] = result;
+                continue;
+            }
+
+            if (color_type == -2){
+
+                jint maxRG =  (r > g) ? r : g;
+                jint maxColor = (b > maxRG) ? b : maxRG;
+                    if (maxColor > 0) {
+                        jint threshold = (jint) ((float) maxColor * ansi_ratio);
+                        r =  (r >= threshold) ? r : 0;
+                        g =  (g >= threshold) ? g : 0;
+                        b =  (b >= threshold) ? b : 0;
+                    }
+                jint ansiResult = (a << 24) | (r << 16) | (g << 8) | b;
+                ascii_color_arrayJ[ind] = ansiResult;
+            }
+
         }
     }
 
@@ -115,18 +142,18 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_generat
         JNIEnv *env,
         jobject thiz,
         jintArray ascii_index_array,
-        jint ascii_index_array_size,
+        jintArray ascii_color_array,
         jint text_bitmap_width,
         jint text_bitmap_height,
         jint text_size_int,
         jbyteArray density_int_array,
         jintArray result_array,
         jint result_width,
-        jint fg_color,
         jint bg_color) {
 
     jbyte *density_int_arrayJ = env->GetByteArrayElements(density_int_array, nullptr);
     jint *ascii_index_arrayJ = env->GetIntArrayElements(ascii_index_array, nullptr);
+    jint *ascii_color_arrayJ = env->GetIntArrayElements(ascii_color_array, nullptr);
     jint *result_arrayJ = env->GetIntArrayElements(result_array, nullptr);
 
     for (jint index = 0; index < (text_size_int * text_size_int * text_bitmap_width *
@@ -145,11 +172,12 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_generat
         jbyte ascii = density_int_arrayJ[asciiArrayIndex +
                                          (asciiIndex * text_size_int * text_size_int)];
 
-        result_arrayJ[index] = (ascii) ? fg_color : bg_color;
+        result_arrayJ[index] = (ascii) ? ascii_color_arrayJ[asciiIndexIndex] : bg_color;
     }
 
     env->ReleaseByteArrayElements(density_int_array, density_int_arrayJ, 0);
     env->ReleaseIntArrayElements(ascii_index_array, ascii_index_arrayJ, 0);
+    env->ReleaseIntArrayElements(ascii_color_array, ascii_color_arrayJ, 0);
     env->ReleaseIntArrayElements(result_array, result_arrayJ, 0);
 
 }

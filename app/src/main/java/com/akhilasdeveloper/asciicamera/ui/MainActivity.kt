@@ -423,7 +423,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         initPermission()
         viewModel = ViewModelProvider(this@MainActivity)[MainViewModel::class.java]
         cameraExecutor = Executors.newSingleThreadExecutor()
-        asciiGenerator.changeFilter(AsciiFilters.WhiteOnBlack)
+        asciiGenerator.changeFilter(AsciiFilters.ANSI)
         asciiGenerator.setDispatcher(cameraExecutor.asCoroutineDispatcher())
         textCanvasView = binding.gridViewHolder
         textCanvasView.rotateDegree = 90f
