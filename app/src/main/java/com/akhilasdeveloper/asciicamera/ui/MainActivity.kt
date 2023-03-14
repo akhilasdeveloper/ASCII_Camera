@@ -44,6 +44,7 @@ import com.akhilasdeveloper.asciicamera.util.*
 import com.akhilasdeveloper.asciicamera.util.Constants.BITMAP_PATH
 import com.akhilasdeveloper.asciicamera.util.Constants.DEFAULT_CUSTOM_CHARS
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
+import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiGenerator
 import com.flask.colorpicker.ColorPickerView
 import com.flask.colorpicker.OnColorSelectedListener
@@ -422,6 +423,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         initPermission()
         viewModel = ViewModelProvider(this@MainActivity)[MainViewModel::class.java]
         cameraExecutor = Executors.newSingleThreadExecutor()
+        asciiGenerator.changeFilter(AsciiFilters.WhiteOnBlack)
         asciiGenerator.setDispatcher(cameraExecutor.asCoroutineDispatcher())
         textCanvasView = binding.gridViewHolder
         textCanvasView.rotateDegree = 90f

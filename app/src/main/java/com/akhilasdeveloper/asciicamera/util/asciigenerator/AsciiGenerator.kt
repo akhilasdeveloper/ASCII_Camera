@@ -27,12 +27,13 @@ class AsciiGenerator() {
         }
     }
 
-    private var filters: AsciiFilters = AsciiFilters.WhiteOnBlack
+    private var filters: AsciiFilters = AsciiFilters.OriginalColor
     private var textSize = filters.textCharSize
     private var textSizeInt = filters.textCharSize.toInt()
     private var density = filters.density
     private var fgColor = filters.fgColor
     private var bgColor = filters.bgColor
+    private var colorType = AsciiFilters.COLOR_TYPE_NONE
 
     private var width = 0
     private var height = 0
@@ -58,7 +59,23 @@ class AsciiGenerator() {
         density = filters.density
         fgColor = filters.fgColor
         bgColor = filters.bgColor
-        _densityIntArray = ByteArray(1)
+
+        colorType = when(filters){
+            is AsciiFilters.Custom -> {
+                filters.specs.fgColorType
+            }
+            is AsciiFilters.ANSI -> {
+                AsciiFilters.COLOR_TYPE_ANSI
+            }
+            is AsciiFilters.OriginalColor -> {
+                AsciiFilters.COLOR_TYPE_ORIGINAL
+            }
+            else -> {
+                AsciiFilters.COLOR_TYPE_NONE
+            }
+        }
+
+        _densityIntArray = byteArrayOf()
     }
 
     private var _densityIntArray: ByteArray = byteArrayOf()
@@ -122,52 +139,10 @@ class AsciiGenerator() {
     }
 
 
-    private external fun getSubPixelsNative(
-        width: Int,
-        xStart: Int,
-        yStart: Int,
-        destWidth: Int,
-        destHeight: Int,
-        array: IntArray,
-        resultArray: IntArray
-    )
-
-    private external fun getSubPixelsBytesNative(
-        width: Int,
-        xStart: Int,
-        yStart: Int,
-        destWidth: Int,
-        destHeight: Int,
-        array: ByteArray,
-        resultArray: ByteArray
-    )
-
-    private external fun calculateAvgColorNative(array: IntArray, size: Int): Int
-
-    private external fun convertByteArrayToRgbNative(
-        byteArray: ByteArray,
-        outPutArray: IntArray,
-        width: Int,
-        height: Int
-    )
-
-    private external fun calculateDensityIndexNative(pixel: Int, densityLength: Int): Int
-
-    private external fun addToResultArrayNative(
-        x: Int,
-        y: Int,
-        width: Int,
-        textSizeInt: Int,
-        bgColor: Int,
-        fgColor: Int,
-        char: ByteArray,
-        resultArray: IntArray
-    )
-
     private suspend fun rgbArrayToTextBitmap(intArray: ByteArray, width: Int) =
         withContext(dispatcher) {
 
-            if (isNativeLibAvailable){
+            if (!isNativeLibAvailable){
                 reducePixelsNative2(
                     width,
                     height,
@@ -205,12 +180,14 @@ class AsciiGenerator() {
 
                 generateResult(
                     asciiIndexArray,
+                    asciiColorArray,
                     textBitmapWidth,
                     textBitmapHeight,
                     textSizeInt,
                     densityByteArray,
                     resultArray,
                     width,
+                    colorType,
                     fgColor,
                     bgColor
                 )
@@ -252,12 +229,14 @@ class AsciiGenerator() {
      */
     private fun generateResult(
         ascii_index_array: IntArray,
+        ascii_color_array: IntArray,
         text_bitmap_width: Int,
         text_bitmap_height: Int,
         text_size_int: Int,
         density_byte_array: ByteArray,
         result_array: IntArray,
         result_width: Int,
+        color_type: Int,
         fg_color: Int,
         bg_color: Int
     ) {
@@ -278,7 +257,17 @@ class AsciiGenerator() {
             val ascii =
                 density_byte_array[asciiArrayIndex + (asciiIndex * text_size_int * text_size_int)]
 
-            result_array[index] = if (ascii != 0.toByte()) fg_color else bg_color
+            when(color_type){
+                AsciiFilters.COLOR_TYPE_NONE -> {
+                    result_array[index] = if (ascii != 0.toByte()) fg_color else bg_color
+                }
+                AsciiFilters.COLOR_TYPE_ANSI -> {
+
+                }
+                AsciiFilters.COLOR_TYPE_ORIGINAL -> {
+                    result_array[index] = if (ascii != 0.toByte()) ascii_color_array[asciiIndexIndex] else bg_color
+                }
+            }
 
         }
 
@@ -328,7 +317,7 @@ class AsciiGenerator() {
             rowArray[rowArrayCol] += intArray[index * 4].toInt() and 0xff
             rowArray[rowArrayCol + 1] += intArray[index * 4 + 1].toInt() and 0xff
             rowArray[rowArrayCol + 2] += intArray[index * 4 + 2].toInt() and 0xff
-            rowArray[rowArrayCol + 2] += intArray[index * 4 + 3].toInt() and 0xff
+            rowArray[rowArrayCol + 3] += intArray[index * 4 + 3].toInt() and 0xff
 
             //If y and x reaches multiple of textSizeInt, it means it has the sum of required pixels for that position.
             // Now we can calculate the average of the pixel and reset the rowArray values to 0 for calculating next row.
@@ -353,17 +342,6 @@ class AsciiGenerator() {
 
     }
 
-    private external fun reducePixelsNative(
-        x: Int,
-        y: Int,
-        width: Int,
-        textBitmapWidth: Int,
-        textSizeInt: Int,
-        intArray: ByteArray,
-        asciiColorArray: IntArray,
-        asciiIndexArray: IntArray,
-        densityLength: Int
-    )
 
     private external fun reducePixelsNative2(
         width: Int,

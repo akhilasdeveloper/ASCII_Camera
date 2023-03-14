@@ -122,7 +122,7 @@ sealed class AsciiFilters {
 
     object Custom : AsciiFilters() {
 
-        private var specs: FilterSpecs = FilterSpecs()
+        var specs: FilterSpecs = FilterSpecs()
         operator fun invoke(filterSpecs: FilterSpecs = FilterSpecs()): AsciiFilters {
             specs = filterSpecs
             return this
