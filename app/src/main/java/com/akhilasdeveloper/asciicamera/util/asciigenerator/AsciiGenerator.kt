@@ -184,10 +184,11 @@ class AsciiGenerator() {
                     textSizeInt,
                     densityByteArray,
                     resultArray,
-                    width,
+                    resWidth,
                     bgColor
                 )
             }else{
+
                 reducePixels2(
                     width,
                     height,

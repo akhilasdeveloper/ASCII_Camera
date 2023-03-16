@@ -575,14 +575,5 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         viewModel.removeCustomFilter(filterSpecs)
     }
 
-    private fun ImageProxy.toByteArray(): ByteArray? {
-        val planes = planes
-        val buffer: ByteBuffer = planes[0].buffer
-        val byteArray = ByteArray(width * (height + height / 2))
-        buffer.get(byteArray, 0, width * height)
-
-        return byteArray
-    }
-
 }
 
