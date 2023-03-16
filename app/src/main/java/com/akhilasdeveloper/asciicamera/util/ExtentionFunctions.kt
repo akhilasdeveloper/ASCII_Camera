@@ -2,6 +2,7 @@ package com.akhilasdeveloper.asciicamera.util
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Color
 import androidx.camera.core.ImageProxy
 import androidx.core.graphics.get
 import androidx.datastore.core.DataStore
@@ -49,7 +50,9 @@ fun Bitmap.getAllPixelsBytes(byteArray: ByteArray){
     val intArray = IntArray(width * height)
     getPixels(intArray, 0,width,0,0,width, height)
     intArray.forEachIndexed { index, i ->
-        byteArray[index] = (i and 0xff).toByte()
+//        byteArray[index] = (i and 0xff).toByte()
+        val brightness = (0.299 * Color.red(i) + 0.587 * Color.green(i) + 0.114 * Color.blue(i)).toInt()
+        byteArray[index] = if (brightness < 128) 0.toByte() else 1.toByte()
     }
 }
 

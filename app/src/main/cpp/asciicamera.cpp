@@ -43,10 +43,10 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reduceP
         jint row = y / text_size_int;
         jint rowArrayCol = col * 4;
 
-        rowArray[rowArrayCol] += static_cast<uint8_t>(pixelsJ[index * 4]);
-        rowArray[rowArrayCol + 1] += static_cast<uint8_t>(pixelsJ[index * 4 + 1]);
-        rowArray[rowArrayCol + 2] += static_cast<uint8_t>(pixelsJ[index * 4 + 2]);
-        rowArray[rowArrayCol + 3] += static_cast<uint8_t>(pixelsJ[index * 4 + 3]);
+        rowArray[rowArrayCol] += pixelsJ[index * 4] & 0xFF;
+        rowArray[rowArrayCol + 1] += pixelsJ[index * 4 + 1] & 0xFF;
+        rowArray[rowArrayCol + 2] += pixelsJ[index * 4 + 2] & 0xFF;
+        rowArray[rowArrayCol + 3] += pixelsJ[index * 4 + 3] & 0xFF;
 
         if ((y + 1) % text_size_int == 0 && (x + 1) % text_size_int == 0) {
             jint r = rowArray[rowArrayCol] / arraySize;

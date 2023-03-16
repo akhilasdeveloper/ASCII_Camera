@@ -15,8 +15,6 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.Surface
-import android.view.Surface.ROTATION_180
-import android.view.Surface.ROTATION_90
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
@@ -57,6 +55,7 @@ import timber.log.Timber
 import java.io.IOException
 import java.io.InputStream
 import java.nio.ByteBuffer
+import java.nio.IntBuffer
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import javax.inject.Inject
@@ -123,6 +122,31 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         init()
         setClickListeners()
         subscribeToObservers()
+
+        /*getSampleBitmap()?.let {
+            val byteCount = it.byteCount
+            val buffer = ByteBuffer.allocate(byteCount)
+            it.copyPixelsToBuffer(buffer)
+            val bytes = buffer.array()
+
+            /////////////////////////////////////////////
+
+            val rotatedArray = ByteArray(bytes.size)
+            AsciiGenerator().rotateByteArrayImage(bytes, rotatedArray, it.width, it.height)
+
+            *//*val temp = width
+            width = height
+            height = temp*//*
+
+            ////////////////////////////////////////////////////
+
+            val bufferAf = ByteBuffer.wrap(rotatedArray)
+            val intBuffer: IntBuffer = bufferAf.asIntBuffer()
+            val pixels = IntArray(rotatedArray.size / 4)
+            intBuffer.get(pixels)
+
+            binding.image.setImageBitmap(Bitmap.createBitmap(pixels, it.height, it.width, Bitmap.Config.ARGB_8888))
+        }*/
     }
 
     private fun subscribeToObservers() {
@@ -511,9 +535,12 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     private fun generateTextView(imageProxy: ImageProxy) {
         lifecycleScope.launch {
             val bitmap = asciiGenerator.imageProxyToTextBitmap(imageProxy)
+            binding.pixels.drawBitmap(bitmap)
+/*
             binding.image.setImageBitmap(
                 bitmap
             )
+*/
         }
         /*lifecycleScope.launch {
             asciiGenerator.filterPixelToCharIntArrayTest(Color.DKGRAY).let {

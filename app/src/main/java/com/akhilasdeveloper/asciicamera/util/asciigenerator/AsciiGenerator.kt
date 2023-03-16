@@ -4,9 +4,13 @@ import android.graphics.*
 import android.text.TextPaint
 import androidx.camera.core.ImageProxy
 import androidx.core.graphics.ColorUtils
-import com.akhilasdeveloper.asciicamera.util.*
+import com.akhilasdeveloper.asciicamera.util.RuntimeCalculator
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters.Companion.ANSI_RATIO
-import kotlinx.coroutines.*
+import com.akhilasdeveloper.asciicamera.util.getAllPixelsBytes
+import com.akhilasdeveloper.asciicamera.util.map
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.nio.ByteBuffer
 
@@ -31,6 +35,7 @@ class AsciiGenerator() {
     private var filters: AsciiFilters = AsciiFilters.OriginalColor
     private var textSize = filters.textCharSize
     private var textSizeInt = filters.textCharSize.toInt()
+    private val pixelAvgSize = 6
     private var density = filters.density
     private var fgColor = filters.fgColor
     private var bgColor = filters.bgColor
@@ -42,9 +47,14 @@ class AsciiGenerator() {
     private var textBitmapWidth = 1
     private var textBitmapHeight = 1
 
+    private var avgBitmapWidth = 1
+    private var avgBitmapHeight = 1
+
+
+
     private var resultArray = IntArray(width * height)
-    private var asciiIndexArray = IntArray(textBitmapWidth * textBitmapHeight)
-    private var asciiColorArray = IntArray(textBitmapWidth * textBitmapHeight)
+    private var asciiIndexArray = IntArray(avgBitmapWidth * avgBitmapHeight)
+    private var asciiColorArray = IntArray(avgBitmapWidth * avgBitmapHeight)
 
     private val runtimeCalculator = RuntimeCalculator()
     private var dispatcher = Dispatchers.Default
@@ -116,12 +126,17 @@ class AsciiGenerator() {
             textSizeInt,
             textSizeInt * density.length, Bitmap.Config.ARGB_8888
         )
+
+        val ma = ColorMatrix()
+        ma.setSaturation(0f)
         val paint = TextPaint()
+        paint.colorFilter = ColorMatrixColorFilter(ma)
         val textBounds: Rect = Rect()
         paint.textSize = textSize - 1
-        paint.color = Color.WHITE
+        canvas.drawARGB(255, 0, 0, 0)
+        paint.color = -0x1
+        paint.isAntiAlias = true
         canvas.setBitmap(bitmap)
-        canvas.drawColor(Color.BLACK)
 
         density.toCharArray().forEachIndexed { index, c ->
             paint.getTextBounds(c.toString(), 0, 1, textBounds)
@@ -196,6 +211,7 @@ class AsciiGenerator() {
                 )
             }
 
+//            val rotatedArray = rotateArray(resultArray, height, width)
 
             val newBitmap = Bitmap.createBitmap(
                 resultArray,
@@ -203,12 +219,6 @@ class AsciiGenerator() {
                 height,
                 Bitmap.Config.ARGB_8888
             )
-
-
-            /*val matrix = Matrix()
-            matrix.postRotate(90f)
-
-            Bitmap.createBitmap(newBitmap, 0, 0, newBitmap.width, newBitmap.height, matrix, true)*/
 
             newBitmap
 
@@ -262,6 +272,20 @@ class AsciiGenerator() {
         }
 
     }
+
+    private external fun reducePixelsNative2(
+        width: Int,
+        height: Int,
+        textBitmapWidth: Int,
+        textSizeInt: Int,
+        intArray: ByteArray,
+        asciiColorArray: IntArray,
+        asciiIndexArray: IntArray,
+        densityLength: Int,
+        colorType: Int,
+        ansiRatio: Float,
+        fgColor: Int
+    )
 
     /**
      * This function averages the pixels from byte array within the size of textSizeInt. using that result pixel, we will determine the density character.
@@ -358,22 +382,6 @@ class AsciiGenerator() {
 
     }
 
-
-    private external fun reducePixelsNative2(
-        width: Int,
-        height: Int,
-        textBitmapWidth: Int,
-        textSizeInt: Int,
-        intArray: ByteArray,
-        asciiColorArray: IntArray,
-        asciiIndexArray: IntArray,
-        densityLength: Int,
-        colorType: Int,
-        ansiRatio: Float,
-        fgColor: Int
-    )
-
-
     suspend fun imageProxyToTextBitmap(imageProxy: ImageProxy): Bitmap? = withContext(dispatcher) {
 
         setWidthAndHeight(imageProxy.width, imageProxy.height)
@@ -399,12 +407,6 @@ class AsciiGenerator() {
             cropArray(outPutArray, imageProxy.width, croppedArray, width, height)
 
         Timber.d("image width:height $width:$height")
-        /*val rotatedArray = ByteArray(outPutArray.size)
-        rotateByteArrayImage(outPutArray, rotatedArray, width, height)*/
-
-        /*val temp = width
-        width = height
-        height = temp*/
 
         val textBitmap = rgbArrayToTextBitmap(croppedArray, width)
         runtimeCalculator.finish("imageProxyToTextBitmap")
@@ -443,7 +445,7 @@ class AsciiGenerator() {
 
     }
 
-    private fun rotateByteArrayImage(
+    fun rotateByteArrayImage(
         outPutArray: ByteArray,
         rotatedArray: ByteArray,
         width: Int,
@@ -458,21 +460,29 @@ class AsciiGenerator() {
                 val srcIndex = (y * width + x) * 4
                 val destIndex = (destY * height + destX) * 4
 
-                Timber.d("image width:height:x:y $width:$height:$x:$y")
 
                 // Copy the pixel values from the source to the destination
-                try {
-                    rotatedArray[destIndex] =
-                        outPutArray[srcIndex]
-                    rotatedArray[destIndex + 1] = outPutArray[srcIndex + 1]
-                    rotatedArray[destIndex + 2] = outPutArray[srcIndex + 2]
-                    rotatedArray[destIndex + 3] = outPutArray[srcIndex + 3]
-                } catch (e: ArrayIndexOutOfBoundsException) {
-                    Timber.d("Error image width:height:x:y $width:$height:$x:$y")
-                }
+                rotatedArray[destIndex] =
+                    outPutArray[srcIndex]
+                rotatedArray[destIndex + 1] = outPutArray[srcIndex + 1]
+                rotatedArray[destIndex + 2] = outPutArray[srcIndex + 2]
+                rotatedArray[destIndex + 3] = outPutArray[srcIndex + 3]
 
             }
         }
+    }
+
+    fun rotateArray(array: IntArray, rows: Int, cols: Int): IntArray {
+        val result = IntArray(rows * cols)
+        for (i in 0 until rows) {
+            for (j in 0 until cols) {
+                // Compute the index of the current element in the rotated array
+                val rotatedIndex = j * rows + (rows - i - 1)
+                // Copy the element to the rotated array
+                result[rotatedIndex] = array[i * cols + j]
+            }
+        }
+        return result
     }
 
     private fun convertByteBufferToByteArray(buffer: ByteBuffer): ByteArray {

@@ -10,7 +10,7 @@ sealed class AsciiFilters {
     abstract val density: String
     abstract val fgColor: Int
     abstract val bgColor: Int
-    var textCharSize = 6f
+    var textCharSize = 10f
 
     companion object {
         const val COLOR_TYPE_NONE = -1
