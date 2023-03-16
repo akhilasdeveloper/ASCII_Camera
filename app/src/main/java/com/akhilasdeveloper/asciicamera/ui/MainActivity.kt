@@ -535,12 +535,10 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     private fun generateTextView(imageProxy: ImageProxy) {
         lifecycleScope.launch {
             val bitmap = asciiGenerator.imageProxyToTextBitmap(imageProxy)
-            binding.pixels.drawBitmap(bitmap)
-/*
+//            binding.pixels.drawBitmap(bitmap)
             binding.image.setImageBitmap(
                 bitmap
             )
-*/
         }
         /*lifecycleScope.launch {
             asciiGenerator.filterPixelToCharIntArrayTest(Color.DKGRAY).let {

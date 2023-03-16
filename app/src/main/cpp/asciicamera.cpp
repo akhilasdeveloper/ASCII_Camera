@@ -19,8 +19,8 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reduceP
         JNIEnv *env, jobject thiz,
         jint width,
         jint height,
-        jint text_bitmap_width,
-        jint text_size_int,
+        jint avg_bitmap_width,
+        jint pixel_avg_size,
         jbyteArray int_array,
         jintArray ascii_color_array,
         jintArray ascii_index_array,
@@ -33,14 +33,14 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reduceP
     jint *ascii_color_arrayJ = env->GetIntArrayElements(ascii_color_array, nullptr);
     jint *ascii_index_arrayJ = env->GetIntArrayElements(ascii_index_array, nullptr);
 
-    jint arraySize = text_size_int * text_size_int;
-    jint rowArray[text_bitmap_width * 4];
+    jint arraySize = pixel_avg_size * pixel_avg_size;
+    jint rowArray[avg_bitmap_width * 4];
 
     for (jint index = 0; index < width*height; index ++) {
         jint y = index / width;
         jint x = index % width;
-        jint col = x / text_size_int;
-        jint row = y / text_size_int;
+        jint col = x / pixel_avg_size;
+        jint row = y / pixel_avg_size;
         jint rowArrayCol = col * 4;
 
         rowArray[rowArrayCol] += pixelsJ[index * 4] & 0xFF;
@@ -48,7 +48,7 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reduceP
         rowArray[rowArrayCol + 2] += pixelsJ[index * 4 + 2] & 0xFF;
         rowArray[rowArrayCol + 3] += pixelsJ[index * 4 + 3] & 0xFF;
 
-        if ((y + 1) % text_size_int == 0 && (x + 1) % text_size_int == 0) {
+        if ((y + 1) % pixel_avg_size == 0 && (x + 1) % pixel_avg_size == 0) {
             jint r = rowArray[rowArrayCol] / arraySize;
             jint g = rowArray[rowArrayCol + 1] / arraySize;
             jint b = rowArray[rowArrayCol + 2] / arraySize;
@@ -61,7 +61,7 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reduceP
 
             jint result = (a << 24) | (r << 16) | (g << 8) | b;
             jint densityIndex = calculateDensityIndexNative(result, density_length);
-            jint ind = col + text_bitmap_width * row;
+            jint ind = col + avg_bitmap_width * row;
             ascii_index_arrayJ[ind] = densityIndex;
 
             if (color_type == -1) {
@@ -143,8 +143,8 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_generat
         jobject thiz,
         jintArray ascii_index_array,
         jintArray ascii_color_array,
-        jint text_bitmap_width,
-        jint text_bitmap_height,
+        jint avg_bitmap_width,
+        jint avg_bitmap_height,
         jint text_size_int,
         jbyteArray density_int_array,
         jintArray result_array,
@@ -156,14 +156,14 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_generat
     jint *ascii_color_arrayJ = env->GetIntArrayElements(ascii_color_array, nullptr);
     jint *result_arrayJ = env->GetIntArrayElements(result_array, nullptr);
 
-    for (jint index = 0; index < (text_size_int * text_size_int * text_bitmap_width *
-                                  text_bitmap_height); index++) {
+    for (jint index = 0; index < (text_size_int * text_size_int * avg_bitmap_width *
+            avg_bitmap_height); index++) {
         jint x = index % result_width;
         jint y = index / result_width;
 
         jint asciiIndexX = x / text_size_int;
         jint asciiIndexY = y / text_size_int;
-        jint asciiIndexIndex = asciiIndexX + text_bitmap_width * asciiIndexY;
+        jint asciiIndexIndex = asciiIndexX + avg_bitmap_width * asciiIndexY;
         jint asciiIndex = ascii_index_arrayJ[asciiIndexIndex];
 
         jint asciiArrayIndexX = x % text_size_int;

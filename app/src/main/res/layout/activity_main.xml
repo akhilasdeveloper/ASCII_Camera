@@ -70,11 +70,6 @@
         android:layout_height="match_parent"
         android:id="@+id/image"/>
 
-    <com.akhilasdeveloper.asciicamera.ui.views.PixelsView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:id="@+id/pixels"/>
-
     <androidx.core.widget.NestedScrollView
         android:id="@+id/bottom_sheet"
         android:layout_width="match_parent"

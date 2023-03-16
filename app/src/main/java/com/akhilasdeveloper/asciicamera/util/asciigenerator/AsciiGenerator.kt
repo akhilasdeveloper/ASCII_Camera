@@ -35,7 +35,7 @@ class AsciiGenerator() {
     private var filters: AsciiFilters = AsciiFilters.OriginalColor
     private var textSize = filters.textCharSize
     private var textSizeInt = filters.textCharSize.toInt()
-    private val pixelAvgSize = 6
+    private val pixelAvgSize = 6 //
     private var density = filters.density
     private var fgColor = filters.fgColor
     private var bgColor = filters.bgColor
@@ -44,13 +44,14 @@ class AsciiGenerator() {
     private var width = 0
     private var height = 0
 
+    private var resWidth = 0 //
+    private var resHeight = 0 //
+
     private var textBitmapWidth = 1
     private var textBitmapHeight = 1
 
-    private var avgBitmapWidth = 1
-    private var avgBitmapHeight = 1
-
-
+    private var avgBitmapWidth = 1 //
+    private var avgBitmapHeight = 1 //
 
     private var resultArray = IntArray(width * height)
     private var asciiIndexArray = IntArray(avgBitmapWidth * avgBitmapHeight)
@@ -106,12 +107,18 @@ class AsciiGenerator() {
             textBitmapWidth = width / textSizeInt
             textBitmapHeight = height / textSizeInt
 
-            this.width = textBitmapWidth * textSizeInt
-            this.height = textBitmapHeight * textSizeInt
+            avgBitmapWidth = width / pixelAvgSize
+            avgBitmapHeight = height / pixelAvgSize
 
-            resultArray = IntArray(this.width * this.height)
-            asciiIndexArray = IntArray(textBitmapWidth * textBitmapHeight)
-            asciiColorArray = IntArray(textBitmapWidth * textBitmapHeight)
+            this.width = avgBitmapWidth * pixelAvgSize
+            this.height = avgBitmapHeight * pixelAvgSize
+
+            this.resWidth = avgBitmapWidth * textSizeInt
+            this.resHeight = avgBitmapHeight * textSizeInt
+
+            resultArray = IntArray(this.resWidth * this.resHeight)
+            asciiIndexArray = IntArray(avgBitmapWidth * avgBitmapHeight)
+            asciiColorArray = IntArray(avgBitmapWidth * avgBitmapHeight)
         }
     }
 
@@ -127,15 +134,11 @@ class AsciiGenerator() {
             textSizeInt * density.length, Bitmap.Config.ARGB_8888
         )
 
-        val ma = ColorMatrix()
-        ma.setSaturation(0f)
         val paint = TextPaint()
-        paint.colorFilter = ColorMatrixColorFilter(ma)
         val textBounds: Rect = Rect()
-        paint.textSize = textSize - 1
+        paint.textSize = textSize
         canvas.drawARGB(255, 0, 0, 0)
         paint.color = -0x1
-        paint.isAntiAlias = true
         canvas.setBitmap(bitmap)
 
         density.toCharArray().forEachIndexed { index, c ->
@@ -162,8 +165,8 @@ class AsciiGenerator() {
                 reducePixelsNative2(
                     width,
                     height,
-                    textBitmapWidth,
-                    textSizeInt,
+                    avgBitmapWidth,
+                    pixelAvgSize,
                     intArray,
                     asciiColorArray,
                     asciiIndexArray,
@@ -176,8 +179,8 @@ class AsciiGenerator() {
                 generateResultNative2(
                     asciiIndexArray,
                     asciiColorArray,
-                    textBitmapWidth,
-                    textBitmapHeight,
+                    avgBitmapWidth,
+                    avgBitmapHeight,
                     textSizeInt,
                     densityByteArray,
                     resultArray,
@@ -188,8 +191,8 @@ class AsciiGenerator() {
                 reducePixels2(
                     width,
                     height,
-                    textBitmapWidth,
-                    textSizeInt,
+                    avgBitmapWidth,
+                    pixelAvgSize,
                     intArray,
                     asciiColorArray,
                     asciiIndexArray,
@@ -201,12 +204,12 @@ class AsciiGenerator() {
                 generateResult(
                     asciiIndexArray,
                     asciiColorArray,
-                    textBitmapWidth,
-                    textBitmapHeight,
+                    avgBitmapWidth,
+                    avgBitmapHeight,
                     textSizeInt,
                     densityByteArray,
                     resultArray,
-                    width,
+                    resWidth,
                     bgColor
                 )
             }
@@ -215,8 +218,8 @@ class AsciiGenerator() {
 
             val newBitmap = Bitmap.createBitmap(
                 resultArray,
-                width,
-                height,
+                resWidth,
+                resHeight,
                 Bitmap.Config.ARGB_8888
             )
 
@@ -227,8 +230,8 @@ class AsciiGenerator() {
     private external fun generateResultNative2(
         asciiIndexArray: IntArray,
         asciiColorArray: IntArray,
-        textBitmapWidth: Int,
-        textBitmapHeight: Int,
+        avgBitmapWidth: Int,
+        avgBitmapHeight: Int,
         textSizeInt: Int,
         densityIntArray: ByteArray,
         resultArray: IntArray,
@@ -242,8 +245,8 @@ class AsciiGenerator() {
     private fun generateResult(
         ascii_index_array: IntArray,
         ascii_color_array: IntArray,
-        text_bitmap_width: Int,
-        text_bitmap_height: Int,
+        avg_bitmap_width: Int,
+        avg_bitmap_height: Int,
         text_size_int: Int,
         density_byte_array: ByteArray,
         result_array: IntArray,
@@ -251,14 +254,14 @@ class AsciiGenerator() {
         bg_color: Int
     ) {
 
-        for (index in 0 until (text_size_int * text_size_int * text_bitmap_width * text_bitmap_height)) {
+        for (index in 0 until (text_size_int * text_size_int * avg_bitmap_width * avg_bitmap_height)) {
 
             val x = index % result_width
             val y = index / result_width
 
             val asciiIndexX = x / text_size_int
             val asciiIndexY = y / text_size_int
-            val asciiIndexIndex = asciiIndexX + text_bitmap_width * asciiIndexY
+            val asciiIndexIndex = asciiIndexX + avg_bitmap_width * asciiIndexY
             val asciiIndex = ascii_index_array[asciiIndexIndex]
 
             val asciiArrayIndexX = x % text_size_int
@@ -276,8 +279,8 @@ class AsciiGenerator() {
     private external fun reducePixelsNative2(
         width: Int,
         height: Int,
-        textBitmapWidth: Int,
-        textSizeInt: Int,
+        avgBitmapWidth: Int,
+        pixelAvgSize: Int,
         intArray: ByteArray,
         asciiColorArray: IntArray,
         asciiIndexArray: IntArray,
@@ -300,8 +303,8 @@ class AsciiGenerator() {
     private fun reducePixels2(
         width: Int,
         height: Int,
-        textBitmapWidth: Int,
-        textSizeInt: Int,
+        avgBitmapWidth: Int,
+        pixelAvgSize: Int,
         intArray: ByteArray,
         asciiColorArray: IntArray,
         asciiIndexArray: IntArray,
@@ -310,13 +313,13 @@ class AsciiGenerator() {
         fgColor: Int
     ) {
 
-        val arraySize: Int = textSizeInt * textSizeInt
+        val arraySize: Int = pixelAvgSize * pixelAvgSize
 
         /**
          * Byte array will contain 4 fields for each corresponding position of result array rgba. rowArray will calculate store averages of rgba in row wise.
          * eg: first 4 position will store sum of rgba values separately of 1st pixels (width of textIntSize and height of textIntSize)
          */
-        val rowArray = IntArray(textBitmapWidth * 4)
+        val rowArray = IntArray(avgBitmapWidth * 4)
 
         //loops through results array indexes
         for (index in 0 until width*height) {
@@ -325,8 +328,8 @@ class AsciiGenerator() {
             val x = index % width
 
             //Calculates col and row of colorArray/asciiIndexArray
-            val col = x / textSizeInt
-            val row = y / textSizeInt
+            val col = x / pixelAvgSize
+            val row = y / pixelAvgSize
             //multiplied by 4 because rgba values are represented.
             val rowArrayCol = col * 4
 
@@ -337,7 +340,7 @@ class AsciiGenerator() {
 
             //If y and x reaches multiple of textSizeInt, it means it has the sum of required pixels for that position.
             // Now we can calculate the average of the pixel and reset the rowArray values to 0 for calculating next row.
-            if ((y + 1) % textSizeInt == 0 && (x + 1) % textSizeInt == 0) {
+            if ((y + 1) % pixelAvgSize == 0 && (x + 1) % pixelAvgSize == 0) {
                 var r = rowArray[rowArrayCol] / arraySize
                 var g = rowArray[rowArrayCol + 1] / arraySize
                 var b = rowArray[rowArrayCol + 2] / arraySize
@@ -350,7 +353,7 @@ class AsciiGenerator() {
 
                 val result = a shl 24 or (r shl 16) or (g shl 8) or b
                 val densityIndex = calculateDensityIndex(result, densityLength)
-                val ind = col + textBitmapWidth * row
+                val ind = col + avgBitmapWidth * row
                 asciiIndexArray[ind] = densityIndex
 
                 if (colorType == AsciiFilters.COLOR_TYPE_NONE) {
