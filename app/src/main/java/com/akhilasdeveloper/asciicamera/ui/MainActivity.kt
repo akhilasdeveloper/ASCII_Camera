@@ -14,19 +14,20 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.view.LayoutInflater
 import android.view.Surface
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
-import androidx.core.view.isVisible
 import androidx.core.widget.NestedScrollView
 import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.ViewModelProvider
@@ -34,6 +35,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.akhilasdeveloper.asciicamera.R
 import com.akhilasdeveloper.asciicamera.databinding.ActivityMainBinding
+import com.akhilasdeveloper.asciicamera.databinding.LayoutDensityEditorBinding
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.CustomFiltersRecyclerAdapter
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.FiltersRecyclerAdapter
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerCustomFiltersClickListener
@@ -104,9 +106,10 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             }
             lifecycleScope.launch {
                 pauseCamera()
-                asciiGenerator.imageBitmapToTextBitmap(bitmap.copy(Bitmap.Config.ARGB_8888, true))?.let { bitmap->
-                    setBitmapToImage(bitmap)
-                }
+                asciiGenerator.imageBitmapToTextBitmap(bitmap.copy(Bitmap.Config.ARGB_8888, true))
+                    ?.let { bitmap ->
+                        setBitmapToImage(bitmap)
+                    }
                 asciiGenerator.capture()
             }
 
@@ -138,13 +141,77 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         }
 
         viewModel.bottomSheetAddCustomFilterState.observe(lifecycleScope) {
-
+            asciiGenerator.fgColor = it.fgColor
+            asciiGenerator.bgColor = it.bgColor
+            asciiGenerator.colorType = it.fgColorType
         }
 
         viewModel.customFiltersListState.observe(lifecycleScope) {
             Timber.d("Rovers :$it")
             customFiltersRecyclerAdapter.submitList(it)
         }
+
+    }
+
+    private fun editDensity(
+        onApply: ((density: String, densityArray: ByteArray) -> Unit)?,
+        onDismiss: (() -> Unit)?
+    ) {
+        val dialogView: LayoutDensityEditorBinding =
+            LayoutDensityEditorBinding.inflate(LayoutInflater.from(this))
+        val builder: AlertDialog.Builder =
+            AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                .setView(dialogView.root)
+        val alertDialog: AlertDialog = builder.create()
+
+        dialogView.apply {
+            sortChars.setOnClickListener {
+                charactersInput.setText(textGraphicsSorter.sortTextByBrightness(
+                    charactersInput.text?.let {
+                        if (it.isNotEmpty())
+                            it.toString()
+                        else
+                            null
+                    } ?: DEFAULT_CUSTOM_CHARS
+                ))
+            }
+
+            reversChars.setOnClickListener {
+                charactersInput.setText(
+                    (charactersInput.text?.let {
+                        if (it.isNotEmpty())
+                            it.toString()
+                        else
+                            null
+                    } ?: DEFAULT_CUSTOM_CHARS).reversed()
+                )
+            }
+
+            apply.setOnClickListener {
+                lifecycleScope.launch {
+                    val chars = charactersInput.text?.let {
+                        if (it.isNotEmpty())
+                            it.toString()
+                        else
+                            null
+                    } ?: DEFAULT_CUSTOM_CHARS
+                    val array = utilities.generateDensityArray(
+                        chars,
+                        AsciiFilters.WhiteOnBlack.textCharSize
+                    )
+
+                    onApply?.invoke(chars, array)
+                }
+                alertDialog.dismiss()
+            }
+
+            cancel.setOnClickListener {
+                alertDialog.dismiss()
+                onDismiss?.invoke()
+            }
+        }
+
+        alertDialog.show()
 
     }
 
@@ -202,7 +269,16 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             applyCustomFilterEnteredDetails()
         }
 
-        binding.layoutAddFilterBottomSheet.sortChars.setOnClickListener {
+        binding.layoutAddFilterBottomSheet.editChars.setOnClickListener {
+            editDensity(onApply = { density, densityArray ->
+                asciiGenerator.density = density
+                asciiGenerator._densityIntArray = densityArray
+            }, onDismiss = {
+
+            })
+        }
+
+        /*binding.layoutAddFilterBottomSheet.sortChars.setOnClickListener {
             binding.layoutAddFilterBottomSheet.charactersInput.setText(
                 textGraphicsSorter.sortTextByBrightness(
                     getDensityFromInput()
@@ -212,7 +288,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
         binding.layoutAddFilterBottomSheet.reversChars.setOnClickListener {
             binding.layoutAddFilterBottomSheet.charactersInput.setText(getDensityFromInput().reversed())
-        }
+        }*/
 
         binding.layoutAddFilterBottomSheet.bgColorDisp.setOnClickListener {
             val currColor =
@@ -510,7 +586,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         }
     }
 
-    private fun setBitmapToImage(bitmap: Bitmap?){
+    private fun setBitmapToImage(bitmap: Bitmap?) {
         binding.image.setImageBitmap(bitmap)
     }
 

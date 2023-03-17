@@ -37,16 +37,6 @@
 
     <include layout="@layout/separator"/>
 
-    <ImageView
-        android:id="@+id/filterItemImage"
-        android:layout_width="128dp"
-        android:layout_height="128dp"
-        android:layout_margin="10dp"
-        app:textSize="1sp"
-        tools:ignore="SmallSp" />
-
-    <include layout="@layout/separator"/>
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -66,22 +56,18 @@
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/charactersInput"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:enabled="false"/>
 
         </com.google.android.material.textfield.TextInputLayout>
 
         <Button
-            android:id="@+id/sortChars"
+            android:id="@+id/editChars"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="10dp"
-            android:text="@string/sort" />
+            android:text="@string/edit" />
 
-        <Button
-            android:id="@+id/reversChars"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/reverse" />
     </LinearLayout>
 
     <include layout="@layout/separator"/>

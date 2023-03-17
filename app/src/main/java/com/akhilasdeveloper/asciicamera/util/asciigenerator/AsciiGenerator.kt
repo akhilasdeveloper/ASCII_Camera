@@ -37,10 +37,10 @@ class AsciiGenerator() {
     private var textSize = filters.textCharSize
     private var textSizeInt = filters.textCharSize.toInt()
     private var pixelAvgSize = 6 //
-    private var density = filters.density
-    private var fgColor = filters.fgColor
-    private var bgColor = filters.bgColor
-    private var colorType = AsciiFilters.COLOR_TYPE_NONE
+    var density = filters.density
+    var fgColor = filters.fgColor
+    var bgColor = filters.bgColor
+    var colorType = AsciiFilters.COLOR_TYPE_NONE
 
     private var width = 0
     private var height = 0
@@ -106,7 +106,7 @@ class AsciiGenerator() {
         _densityIntArray = byteArrayOf()
     }
 
-    private var _densityIntArray: ByteArray = byteArrayOf()
+    var _densityIntArray: ByteArray = byteArrayOf()
 
     private val densityByteArray: ByteArray
         get() {
