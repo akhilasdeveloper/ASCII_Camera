@@ -36,12 +36,12 @@ class FiltersRecyclerAdapter(
             RecyclerView.ViewHolder(binding.root) {
 
             fun bindPhoto(photo: TextBitmapFilter, position: Int) {
-                binding.filterItemImage.filter = photo
+                /*binding.filterItemImage.filter = photo
                 binding.filterItemImage.generateTextViewFromBitmap(bitmap = sampleBitmap)
                 binding.filterName.text = photo.name
                 binding.root.setOnClickListener {
                     interaction?.onItemClicked(photo)
-                }
+                }*/
             }
 
         }

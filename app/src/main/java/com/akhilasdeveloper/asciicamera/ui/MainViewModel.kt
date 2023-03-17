@@ -30,6 +30,9 @@ class MainViewModel @Inject constructor(
     private val _customFiltersListState = MutableStateFlow<List<FilterSpecs>>(arrayListOf())
     val customFiltersListState: StateFlow<List<FilterSpecs>> = _customFiltersListState
 
+    private val _filtersCount = MutableStateFlow<Int>(0)
+    val filtersCount: StateFlow<Int> = _filtersCount
+
     private suspend fun setLens(lens: CameraSelector) {
         repository.setCurrentLens(lens.toCameraSelectorInt())
     }
@@ -81,15 +84,21 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun getFiltersCount() {
+        viewModelScope.launch {
+            _filtersCount.value = repository.getFiltersCount()
+        }
+    }
+
     fun addCustomFilters(filterSpecs: FilterSpecs) {
         viewModelScope.launch {
-            repository.addCustomFilter(filterSpecsTableFromData(filterSpecs))
+//            repository.addCustomFilter(filterSpecsTableFromData(filterSpecs))
         }
     }
 
     fun removeCustomFilter(filterSpecs: FilterSpecs) {
         viewModelScope.launch {
-            repository.deleteCustomFilter(filterSpecsTableFromData(filterSpecs))
+//            repository.deleteCustomFilter(filterSpecsTableFromData(filterSpecs))
         }
     }
 
@@ -99,15 +108,15 @@ class MainViewModel @Inject constructor(
         fgColor = filterSpecsTable.fgColor,
         bgColor = filterSpecsTable.bgColor,
         fgColorType = filterSpecsTable.fgColorType,
-        )
+    )
 
-    private fun filterSpecsTableFromData(filterSpecs: FilterSpecs): FilterSpecsTable = FilterSpecsTable(
+    /*private fun filterSpecsTableFromData(filterSpecs: FilterSpecs): FilterSpecsTable = FilterSpecsTable(
         id = filterSpecs.id,
         density = filterSpecs.density,
         fgColor = filterSpecs.fgColor,
         bgColor = filterSpecs.bgColor,
         fgColorType = filterSpecs.fgColorType,
-    )
+    )*/
 
 }
 

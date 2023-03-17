@@ -37,7 +37,7 @@
 
     <include layout="@layout/separator"/>
 
-    <com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
+    <ImageView
         android:id="@+id/filterItemImage"
         android:layout_width="128dp"
         android:layout_height="128dp"

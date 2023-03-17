@@ -42,10 +42,6 @@ inline fun Bitmap.forEachIndexed(action: (x: Int, y: Int, pixel: Int) -> Unit): 
             action(x, y, get(x, y))
 }
 
-fun Bitmap.getAllPixels(intArray: IntArray){
-    getPixels(intArray, 0,width,0,0,width, height)
-}
-
 fun Bitmap.getAllPixelsBytes(byteArray: ByteArray){
     val intArray = IntArray(width * height)
     getPixels(intArray, 0,width,0,0,width, height)

@@ -43,4 +43,6 @@ class Repository
     }
 
     fun getCustomFilters() = filterSpecsDao.getFilters().flowOn(Dispatchers.IO)
+
+    suspend fun getFiltersCount() = withContext(Dispatchers.IO){ filterSpecsDao.getFiltersCount()}
 }

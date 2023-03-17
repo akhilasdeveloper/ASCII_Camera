@@ -9,13 +9,13 @@
     android:layout_margin="5dp"
     android:background="@color/menu_bg_color">
 
-    <com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
+    <!--<com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
         android:id="@+id/filterItemImage"
         android:layout_width="64dp"
         android:layout_height="64dp"
         app:textSize="1sp"
         tools:ignore="SmallSp"
-        android:layout_margin="2dp"/>
+        android:layout_margin="2dp"/>-->
 
     <TextView
         android:layout_width="wrap_content"

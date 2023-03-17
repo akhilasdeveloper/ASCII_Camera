@@ -39,15 +39,15 @@ class CustomFiltersRecyclerAdapter(
             RecyclerView.ViewHolder(binding.root) {
 
             fun bindPhoto(photo: FilterSpecs, position: Int) {
-                binding.filterItemImage.filter = Custom(photo)
-                binding.filterItemImage.generateTextViewFromBitmap(bitmap = sampleBitmap)
-                binding.root.setOnClickListener {
+                /*binding.filterItemImage.filter = Custom(photo)
+                binding.filterItemImage.generateTextViewFromBitmap(bitmap = sampleBitmap)*/
+                /*binding.root.setOnClickListener {
                     interaction?.onCustomItemClicked(photo)
                 }
 
                 binding.deleteButton.setOnClickListener {
                     interaction?.onCustomDeleteClicked(photo)
-                }
+                }*/
             }
 
         }

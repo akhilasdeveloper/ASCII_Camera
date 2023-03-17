@@ -1,5 +1,6 @@
 package com.akhilasdeveloper.asciicamera.util.asciigenerator
 
+import android.content.res.Resources
 import android.graphics.*
 import android.text.TextPaint
 import androidx.camera.core.ImageProxy
@@ -35,7 +36,7 @@ class AsciiGenerator() {
     private var filters: AsciiFilters = AsciiFilters.OriginalColor
     private var textSize = filters.textCharSize
     private var textSizeInt = filters.textCharSize.toInt()
-    private val pixelAvgSize = 6 //
+    private var pixelAvgSize = 6 //
     private var density = filters.density
     private var fgColor = filters.fgColor
     private var bgColor = filters.bgColor
@@ -60,6 +61,21 @@ class AsciiGenerator() {
     private val runtimeCalculator = RuntimeCalculator()
     private var dispatcher = Dispatchers.Default
 
+    private var mListener: OnGeneratedListener? = null
+    private var lastBitmap: Bitmap? = null
+    var isCapturedState = false
+        private set
+
+    fun continueStream() {
+        isCapturedState = false
+        mListener?.onContinue()
+    }
+
+    fun capture() {
+        isCapturedState = true
+        mListener?.onCapture(lastBitmap)
+    }
+
     fun setDispatcher(dispatcher: CoroutineDispatcher) {
         this.dispatcher = dispatcher
     }
@@ -72,7 +88,7 @@ class AsciiGenerator() {
         fgColor = filters.fgColor
         bgColor = filters.bgColor
 
-        colorType = when(filters){
+        colorType = when (filters) {
             is AsciiFilters.Custom -> {
                 filters.specs.fgColorType
             }
@@ -102,7 +118,9 @@ class AsciiGenerator() {
 
     private fun setWidthAndHeight(width: Int, height: Int) {
 
-        if (this.width != textBitmapWidth * textSizeInt || this.height != textBitmapHeight * textSizeInt) {
+        calculatePixelAvg(width, height)
+
+        if (this.width != avgBitmapWidth * pixelAvgSize || this.height != avgBitmapHeight * pixelAvgSize) {
 
             textBitmapWidth = width / textSizeInt
             textBitmapHeight = height / textSizeInt
@@ -161,7 +179,7 @@ class AsciiGenerator() {
     private suspend fun rgbArrayToTextBitmap(intArray: ByteArray, width: Int) =
         withContext(dispatcher) {
 
-            if (isNativeLibAvailable){
+            if (isNativeLibAvailable) {
                 reducePixelsNative2(
                     width,
                     height,
@@ -187,7 +205,7 @@ class AsciiGenerator() {
                     resWidth,
                     bgColor
                 )
-            }else{
+            } else {
 
                 reducePixels2(
                     width,
@@ -271,7 +289,8 @@ class AsciiGenerator() {
             val ascii =
                 density_byte_array[asciiArrayIndex + (asciiIndex * text_size_int * text_size_int)]
 
-            result_array[index] = if (ascii != 0.toByte()) ascii_color_array[asciiIndexIndex] else bg_color
+            result_array[index] =
+                if (ascii != 0.toByte()) ascii_color_array[asciiIndexIndex] else bg_color
 
         }
 
@@ -323,7 +342,7 @@ class AsciiGenerator() {
         val rowArray = IntArray(avgBitmapWidth * 4)
 
         //loops through results array indexes
-        for (index in 0 until width*height) {
+        for (index in 0 until width * height) {
             //Calculates x and y of the current result array index
             val y = index / width
             val x = index % width
@@ -362,12 +381,12 @@ class AsciiGenerator() {
                     continue
                 }
 
-                if (colorType == AsciiFilters.COLOR_TYPE_ORIGINAL){
+                if (colorType == AsciiFilters.COLOR_TYPE_ORIGINAL) {
                     asciiColorArray[ind] = result
                     continue
                 }
 
-                if (colorType == AsciiFilters.COLOR_TYPE_ANSI){
+                if (colorType == AsciiFilters.COLOR_TYPE_ANSI) {
 
                     val maxRG: Int = if (r > g) r else g
                     val maxColor = if (b > maxRG) b else maxRG
@@ -386,37 +405,94 @@ class AsciiGenerator() {
 
     }
 
+    suspend fun imageBitmapToTextBitmap(imageProxy: Bitmap): Bitmap? = withContext(dispatcher) {
+
+        if (!isCapturedState) {
+
+            setWidthAndHeight(imageProxy.width, imageProxy.height)
+
+            runtimeCalculator.start("imageProxyToTextBitmap")
+
+            val outPutArray = imageProxy.getAllPixelsByteArray()
+
+            val croppedArray = ByteArray(width * height * 4)
+            if (isNativeLibAvailable)
+                cropArrayNative(
+                    outPutArray,
+                    outPutArray.size,
+                    imageProxy.width,
+                    croppedArray,
+                    width,
+                    height
+                )
+            else
+                cropArray(outPutArray, imageProxy.width, croppedArray, width, height)
+
+            Timber.d("image width:height $width:$height")
+            Timber.d("image avgBitmapWidth:avgBitmapHeight $avgBitmapWidth:$avgBitmapHeight")
+            Timber.d("image avgPixels $pixelAvgSize")
+
+            lastBitmap = rgbArrayToTextBitmap(croppedArray, width)
+            runtimeCalculator.finish("imageProxyToTextBitmap")
+        }
+        lastBitmap
+    }
+
+    private fun calculatePixelAvg(sWidth: Int, sHeight: Int) {
+        val dWidth = getScreenWidth()
+        val dHeight = getScreenHeight()
+
+        val possibleMaxWidth = dWidth / textSizeInt
+        val possibleMaxHeight = dHeight / textSizeInt
+
+        val avgSizeHeight = sHeight / possibleMaxHeight
+        val avgSizeWidth = sWidth / possibleMaxWidth
+
+        pixelAvgSize = if (avgSizeHeight > avgSizeWidth) avgSizeHeight else avgSizeWidth
+        if (pixelAvgSize <= 0) pixelAvgSize = 1
+    }
+
+    fun getScreenWidth(): Int {
+        return Resources.getSystem().displayMetrics.widthPixels
+    }
+
+    fun getScreenHeight(): Int {
+        return Resources.getSystem().displayMetrics.heightPixels
+    }
+
     suspend fun imageProxyToTextBitmap(imageProxy: ImageProxy): Bitmap? = withContext(dispatcher) {
 
-        setWidthAndHeight(imageProxy.width, imageProxy.height)
+        if (!isCapturedState) {
 
-        runtimeCalculator.start("imageProxyToTextBitmap")
+            setWidthAndHeight(imageProxy.width, imageProxy.height)
 
-        val planes = imageProxy.planes
-        val buffer = planes[0].buffer
+            runtimeCalculator.start("imageProxyToTextBitmap")
 
-        val outPutArray = convertByteBufferToByteArray(buffer)
-        imageProxy.close()
-        val croppedArray = ByteArray(width * height * 4)
-        if (isNativeLibAvailable)
-            cropArrayNative(
-                outPutArray,
-                outPutArray.size,
-                imageProxy.width,
-                croppedArray,
-                width,
-                height
-            )
-        else
-            cropArray(outPutArray, imageProxy.width, croppedArray, width, height)
+            val planes = imageProxy.planes
+            val buffer = planes[0].buffer
 
-        Timber.d("image width:height $width:$height")
+            val outPutArray = convertByteBufferToByteArray(buffer)
+            imageProxy.close()
+            val croppedArray = ByteArray(width * height * 4)
+            if (isNativeLibAvailable)
+                cropArrayNative(
+                    outPutArray,
+                    outPutArray.size,
+                    imageProxy.width,
+                    croppedArray,
+                    width,
+                    height
+                )
+            else
+                cropArray(outPutArray, imageProxy.width, croppedArray, width, height)
 
-        val textBitmap = rgbArrayToTextBitmap(croppedArray, width)
-        runtimeCalculator.finish("imageProxyToTextBitmap")
+            Timber.d("image width:height $width:$height")
+            Timber.d("image avgBitmapWidth:avgBitmapHeight $avgBitmapWidth:$avgBitmapHeight")
 
-        textBitmap
-
+            lastBitmap = rgbArrayToTextBitmap(croppedArray, width)
+            runtimeCalculator.finish("imageProxyToTextBitmap")
+        }
+        lastBitmap
     }
 
     private external fun cropArrayNative(
@@ -501,5 +577,33 @@ class AsciiGenerator() {
         return densityLength - charIndex - 1
     }
 
+    fun setAsciiGeneratedListener(eventListener: OnGeneratedListener) {
+        mListener = eventListener
+    }
+
+    interface OnGeneratedListener {
+        fun onContinue()
+        fun onCapture(bitmap: Bitmap?)
+    }
+
+    private fun Bitmap.getAllPixelsByteArray(): ByteArray {
+        val width: Int = this.getWidth()
+        val height: Int = this.getHeight()
+        val pixels = IntArray(width * height)
+        this.getPixels(pixels, 0, width, 0, 0, width, height)
+        val argb8888Bytes = ByteArray(width * height * 4)
+        for (i in pixels.indices) {
+            val pixel = pixels[i]
+            argb8888Bytes[i * 4] = (pixel shr 16 and 0xFF).toByte() // alpha
+            argb8888Bytes[i * 4 + 1] = (pixel shr 8 and 0xFF).toByte() // red
+            argb8888Bytes[i * 4 + 2] = (pixel and 0xFF).toByte() // green
+            argb8888Bytes[i * 4 + 3] = (pixel shr 24 and 0xFF).toByte() // blue
+        }
+
+        return argb8888Bytes
+    }
+
 }
+
+
 

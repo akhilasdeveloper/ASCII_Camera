@@ -4,9 +4,9 @@
     android:layout_height="match_parent"
     android:gravity="center">
 
-    <com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
+    <!--<com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:id="@+id/previewCanvas"/>
+        android:id="@+id/previewCanvas"/>-->
 
 </LinearLayout>

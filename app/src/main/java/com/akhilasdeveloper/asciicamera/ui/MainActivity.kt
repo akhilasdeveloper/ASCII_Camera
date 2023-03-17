@@ -26,6 +26,7 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.core.widget.NestedScrollView
 import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.ViewModelProvider
@@ -37,7 +38,6 @@ import com.akhilasdeveloper.asciicamera.ui.recyclerview.CustomFiltersRecyclerAda
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.FiltersRecyclerAdapter
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerCustomFiltersClickListener
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerFiltersClickListener
-import com.akhilasdeveloper.asciicamera.ui.views.TextCanvasView
 import com.akhilasdeveloper.asciicamera.util.*
 import com.akhilasdeveloper.asciicamera.util.Constants.BITMAP_PATH
 import com.akhilasdeveloper.asciicamera.util.Constants.DEFAULT_CUSTOM_CHARS
@@ -49,13 +49,12 @@ import com.flask.colorpicker.OnColorSelectedListener
 import com.flask.colorpicker.builder.ColorPickerClickListener
 import com.flask.colorpicker.builder.ColorPickerDialogBuilder
 import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.IOException
 import java.io.InputStream
-import java.nio.ByteBuffer
-import java.nio.IntBuffer
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import javax.inject.Inject
@@ -67,7 +66,6 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     private var _binding: ActivityMainBinding? = null
     private val binding get() = _binding!!
-    private lateinit var textCanvasView: TextCanvasView
     private lateinit var cameraExecutor: Executor
 
     private var cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -81,8 +79,9 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     lateinit var utilities: Utilities
     lateinit var customFiltersRecyclerAdapter: CustomFiltersRecyclerAdapter
     private var capturedBitmap: Bitmap? = null
-    private var capturedChars: ArrayList<ArrayList<TextBitmapFilter.Companion.CharData>> =
-        arrayListOf()
+
+    private var cameraProvider: ProcessCameraProvider? = null
+    lateinit var cameraProcessProvider: ListenableFuture<ProcessCameraProvider>
 
     private lateinit var viewModel: MainViewModel
     private var sampleBitmap: Bitmap? = null
@@ -103,10 +102,17 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
                 val source = ImageDecoder.createSource(this.contentResolver, imageUri)
                 ImageDecoder.decodeBitmap(source)
             }
+            lifecycleScope.launch {
+                pauseCamera()
+                asciiGenerator.imageBitmapToTextBitmap(bitmap.copy(Bitmap.Config.ARGB_8888, true))?.let { bitmap->
+                    setBitmapToImage(bitmap)
+                }
+                asciiGenerator.capture()
+            }
 
-            textCanvasView.generateTextViewFromBitmap(
+            /*textCanvasView.generateTextViewFromBitmap(
                 bitmap.copy(Bitmap.Config.ARGB_8888, true)
-            )
+            )*/
         }
     }
 
@@ -115,38 +121,9 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        /*asciiGenerator.generatedBitmapState.observe(lifecycleScope) {
-            binding.image.setImageBitmap(it)
-        }*/
-
         init()
         setClickListeners()
         subscribeToObservers()
-
-        /*getSampleBitmap()?.let {
-            val byteCount = it.byteCount
-            val buffer = ByteBuffer.allocate(byteCount)
-            it.copyPixelsToBuffer(buffer)
-            val bytes = buffer.array()
-
-            /////////////////////////////////////////////
-
-            val rotatedArray = ByteArray(bytes.size)
-            AsciiGenerator().rotateByteArrayImage(bytes, rotatedArray, it.width, it.height)
-
-            *//*val temp = width
-            width = height
-            height = temp*//*
-
-            ////////////////////////////////////////////////////
-
-            val bufferAf = ByteBuffer.wrap(rotatedArray)
-            val intBuffer: IntBuffer = bufferAf.asIntBuffer()
-            val pixels = IntArray(rotatedArray.size / 4)
-            intBuffer.get(pixels)
-
-            binding.image.setImageBitmap(Bitmap.createBitmap(pixels, it.height, it.width, Bitmap.Config.ARGB_8888))
-        }*/
     }
 
     private fun subscribeToObservers() {
@@ -157,11 +134,10 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         }
 
         viewModel.inverseCanvasState.observe(lifecycleScope) {
-            textCanvasView.inverse = it
+
         }
 
         viewModel.bottomSheetAddCustomFilterState.observe(lifecycleScope) {
-            binding.layoutAddFilterBottomSheet.filterItemImage.filter = TextBitmapFilter.Custom(it)
 
         }
 
@@ -174,22 +150,29 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     private fun setClickListeners() {
         binding.flipCameraButton.setOnClickListener {
-            if (textCanvasView.isCapturedState) {
-                textCanvasView.continueStream()
+            if (asciiGenerator.isCapturedState) {
+                asciiGenerator.continueStream()
             } else
                 viewModel.toggleCamera()
         }
         binding.filterButton.setOnClickListener {
-            if (textCanvasView.isCapturedState) {
-                showShareOption()
-            } else {
-                if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
-                    bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
-                else {
-                    bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
-                }
+
+            if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
+                bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+            else {
+                bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
             }
 
+        }
+
+        binding.galleryButton.setOnClickListener {
+            if (asciiGenerator.isCapturedState) {
+                showShareOption()
+            } else {
+                val galleryIntent = Intent(Intent.ACTION_PICK)
+                galleryIntent.data = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                requestGallery.launch(galleryIntent)
+            }
         }
 
         binding.layoutFilterBottomSheet.closeFilterSheet.setOnClickListener {
@@ -212,7 +195,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         }
 
         binding.captureButton.setOnClickListener {
-            textCanvasView.capture()
+            asciiGenerator.capture()
         }
 
         binding.layoutAddFilterBottomSheet.charactersInput.addTextChangedListener {
@@ -279,30 +262,20 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         bottomSheetBehavior.addBottomSheetCallback(bottomSheetCallBack)
         createFilterBottomSheetBehavior.addBottomSheetCallback(bottomSheetCallBack)
 
-        textCanvasView.setOnTextCaptureListener(object : TextCanvasView.OnTextCaptureListener {
-            override fun continueStream() {
-                capturedChars.clear()
+        asciiGenerator.setAsciiGeneratedListener(object : AsciiGenerator.OnGeneratedListener {
+
+            override fun onContinue() {
                 capturedBitmap = null
                 revertPanelButtons()
+                startCamera()
             }
 
-            override fun onCapture(
-                drawList: ArrayList<ArrayList<TextBitmapFilter.Companion.CharData>>,
-                bitmap: Bitmap?
-            ) {
-                capturedChars.clear()
-                capturedChars.addAll(drawList)
+            override fun onCapture(bitmap: Bitmap?) {
                 capturedBitmap = bitmap
                 changePanelButtonsToConfirm()
-
+                pauseCamera()
             }
         })
-
-        binding.galleryButton.setOnClickListener {
-            val galleryIntent = Intent(Intent.ACTION_PICK)
-            galleryIntent.data = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-            requestGallery.launch(galleryIntent)
-        }
 
     }
 
@@ -331,7 +304,8 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
                 R.drawable.round_close_24
             )
         )
-        binding.filterButton.setImageDrawable(
+        binding.captureButton.visibility = View.INVISIBLE
+        binding.galleryButton.setImageDrawable(
             ContextCompat.getDrawable(
                 this,
                 R.drawable.baseline_share_24
@@ -346,10 +320,11 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
                 R.drawable.baseline_flip_camera_android_24
             )
         )
-        binding.filterButton.setImageDrawable(
+        binding.captureButton.visibility = View.VISIBLE
+        binding.galleryButton.setImageDrawable(
             ContextCompat.getDrawable(
                 this,
-                R.drawable.baseline_filter_24
+                R.drawable.baseline_add_photo_alternate_24
             )
         )
     }
@@ -362,7 +337,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     private fun initAddFilterSheet() {
         getSampleBitmap()?.let { bitmap ->
-            binding.layoutAddFilterBottomSheet.filterItemImage.generateTextViewFromBitmap(bitmap = bitmap)
+//            binding.layoutAddFilterBottomSheet.filterItemImage.generateTextViewFromBitmap(bitmap = bitmap)
             applyCustomFilterEnteredDetails()
         }
     }
@@ -411,7 +386,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         checkPermission(Manifest.permission.CAMERA) {
 
             if (it)
-                openCamera()
+                startCamera()
             else
                 Toast.makeText(this, "Please allow camera permission", Toast.LENGTH_SHORT).show()
         }
@@ -447,16 +422,14 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         initPermission()
         viewModel = ViewModelProvider(this@MainActivity)[MainViewModel::class.java]
         cameraExecutor = Executors.newSingleThreadExecutor()
-        asciiGenerator.changeFilter(AsciiFilters.ANSI)
+        cameraProcessProvider = ProcessCameraProvider.getInstance(this)
+        asciiGenerator.changeFilter(AsciiFilters.WhiteOnBlack)
         asciiGenerator.setDispatcher(cameraExecutor.asCoroutineDispatcher())
-        textCanvasView = binding.gridViewHolder
-        textCanvasView.rotateDegree = 90f
 
         if (!hasFrontCamera()) {
             binding.flipCameraButton.visibility = View.GONE
         } else {
             cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
-            textCanvasView.inverse = true
         }
         viewModel.getLens()
 
@@ -508,20 +481,18 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         return bitmap
     }
 
-    private fun openCamera() {
-
-        val cameraProcessProvider = ProcessCameraProvider.getInstance(this)
+    private fun startCamera() {
 
         cameraProcessProvider.addListener({
 
             try {
-                val cameraProvider: ProcessCameraProvider = cameraProcessProvider.get()
+                cameraProvider = cameraProcessProvider.get()
 
                 val analysis = buildImageAnalysisUseCase()
 
-                cameraProvider.unbindAll()
+                cameraProvider?.unbindAll()
 
-                cameraProvider.bindToLifecycle(
+                cameraProvider?.bindToLifecycle(
                     this, cameraSelector, analysis
                 )
 
@@ -535,16 +506,16 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     private fun generateTextView(imageProxy: ImageProxy) {
         lifecycleScope.launch {
             val bitmap = asciiGenerator.imageProxyToTextBitmap(imageProxy)
-//            binding.pixels.drawBitmap(bitmap)
-            binding.image.setImageBitmap(
-                bitmap
-            )
+            setBitmapToImage(bitmap)
         }
-        /*lifecycleScope.launch {
-            asciiGenerator.filterPixelToCharIntArrayTest(Color.DKGRAY).let {
-                binding.image.setImageBitmap(it)
-            }
-        }*/
+    }
+
+    private fun setBitmapToImage(bitmap: Bitmap?){
+        binding.image.setImageBitmap(bitmap)
+    }
+
+    private fun pauseCamera() {
+        cameraProvider?.unbindAll()
     }
 
     private fun buildImageAnalysisUseCase(): ImageAnalysis {
@@ -564,11 +535,11 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     )
 
     override fun onItemClicked(textBitmapFilter: TextBitmapFilter) {
-        textCanvasView.filter = textBitmapFilter
+//        textCanvasView.filter = textBitmapFilter
     }
 
     override fun onCustomItemClicked(filterSpecs: FilterSpecs) {
-        textCanvasView.filter = TextBitmapFilter.Custom(filterSpecs)
+//        textCanvasView.filter = TextBitmapFilter.Custom(filterSpecs)
     }
 
     override fun onCustomDeleteClicked(filterSpecs: FilterSpecs) {

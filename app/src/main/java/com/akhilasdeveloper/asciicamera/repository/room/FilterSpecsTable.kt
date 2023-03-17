@@ -8,6 +8,7 @@ data class FilterSpecsTable(
     @PrimaryKey(autoGenerate = true)
     val id: Long? = null,
     var density: String,
+    var densityArray: ByteArray,
     var fgColor: Int,
     var fgColorType: Int,
     var bgColor: Int)
