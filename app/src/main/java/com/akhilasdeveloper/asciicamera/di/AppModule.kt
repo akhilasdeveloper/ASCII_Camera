@@ -1,6 +1,9 @@
 package com.akhilasdeveloper.asciicamera.di
 
 import android.content.Context
+import android.view.Surface
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.room.Room
 import com.akhilasdeveloper.asciicamera.repository.datastore.DataStoreFunctions
 import com.akhilasdeveloper.asciicamera.repository.datastore.DataStoreFunctionsImpl
@@ -9,6 +12,8 @@ import com.akhilasdeveloper.asciicamera.util.ColorSorter
 import com.akhilasdeveloper.asciicamera.util.Constants.ASCII_DB_NAME
 import com.akhilasdeveloper.asciicamera.util.TextGraphicsSorter
 import com.akhilasdeveloper.asciicamera.util.Utilities
+import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiGenerator
+import com.google.common.util.concurrent.ListenableFuture
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -30,6 +35,34 @@ object AppModule {
     @Provides
     fun provideColorSorter(): ColorSorter {
         return ColorSorter()
+    }
+
+    @Singleton
+    @Provides
+    fun provideAsciiGenerator(): AsciiGenerator {
+        return AsciiGenerator()
+    }
+
+    @Singleton
+    @Provides
+    fun provideCameraProcessProvider(@ApplicationContext app: Context): ListenableFuture<ProcessCameraProvider> {
+        return ProcessCameraProvider.getInstance(app)
+    }
+
+    @Singleton
+    @Provides
+    fun provideProcessCameraProvider(cameraProcessProvider: ListenableFuture<ProcessCameraProvider>): ProcessCameraProvider {
+        return cameraProcessProvider.get()
+    }
+
+    @Singleton
+    @Provides
+    fun provideImageAnalysis(): ImageAnalysis {
+        return ImageAnalysis.Builder()
+            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setTargetRotation(Surface.ROTATION_90)
+            .build()
     }
 
     @Singleton

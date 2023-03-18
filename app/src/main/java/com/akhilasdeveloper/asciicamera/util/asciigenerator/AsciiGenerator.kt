@@ -5,6 +5,7 @@ import android.graphics.*
 import android.text.TextPaint
 import androidx.camera.core.ImageProxy
 import androidx.core.graphics.ColorUtils
+import com.akhilasdeveloper.asciicamera.util.Constants.DEFAULT_CUSTOM_CHARS
 import com.akhilasdeveloper.asciicamera.util.RuntimeCalculator
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters.Companion.ANSI_RATIO
 import com.akhilasdeveloper.asciicamera.util.getAllPixelsBytes
@@ -12,12 +13,10 @@ import com.akhilasdeveloper.asciicamera.util.map
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 import java.nio.ByteBuffer
 
 
 class AsciiGenerator() {
-
 
     companion object {
 
@@ -33,13 +32,13 @@ class AsciiGenerator() {
         }
     }
 
-    private var filters: AsciiFilters = AsciiFilters.OriginalColor
-    private var textSize = filters.textCharSize
-    private var textSizeInt = filters.textCharSize.toInt()
+    private var textSize = 10f
+    private var textSizeInt = textSize.toInt()
     private var pixelAvgSize = 6 //
-    var density = filters.density
-    var fgColor = filters.fgColor
-    var bgColor = filters.bgColor
+
+    var density = DEFAULT_CUSTOM_CHARS
+    var fgColor = Color.WHITE
+    var bgColor = Color.BLACK
     var colorType = AsciiFilters.COLOR_TYPE_NONE
 
     private var width = 0
@@ -59,12 +58,12 @@ class AsciiGenerator() {
     private var asciiIndexArray = IntArray(avgBitmapWidth * avgBitmapHeight)
     private var asciiColorArray = IntArray(avgBitmapWidth * avgBitmapHeight)
 
-    private val runtimeCalculator = RuntimeCalculator()
     private var dispatcher = Dispatchers.Default
 
     private var mListener: OnGeneratedListener? = null
     private var lastTextBitmap: Bitmap? = null
     private var lastRawBitmap: Bitmap? = null
+
     var isCapturedState = false
         private set
 
@@ -74,11 +73,13 @@ class AsciiGenerator() {
     }
 
     fun capture() {
+
         isCapturedState = true
 
         val lastRawBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         lastRawBitmap.copyPixelsFromBuffer(ByteBuffer.wrap(croppedArray))
         this.lastRawBitmap = lastRawBitmap
+
         mListener?.onCapture(lastTextBitmap, lastRawBitmap)
     }
 
@@ -87,7 +88,6 @@ class AsciiGenerator() {
     }
 
     fun changeFilter(filters: AsciiFilters) {
-        this.filters = filters
         textSize = filters.textCharSize
         textSizeInt = filters.textCharSize.toInt()
         density = filters.density
@@ -411,38 +411,6 @@ class AsciiGenerator() {
 
     }
 
-    suspend fun imageBitmapToTextBitmap(imageProxy: Bitmap): Bitmap? = withContext(dispatcher) {
-
-        if (!isCapturedState) {
-
-            setWidthAndHeight(imageProxy.width, imageProxy.height)
-
-            runtimeCalculator.start("imageProxyToTextBitmap")
-
-            val outPutArray = imageProxy.getAllPixelsByteArray()
-
-            croppedArray = ByteArray(width * height * 4)
-            if (isNativeLibAvailable)
-                cropArrayNative(
-                    outPutArray,
-                    outPutArray.size,
-                    imageProxy.width,
-                    croppedArray,
-                    width,
-                    height
-                )
-            else
-                cropArray(outPutArray, imageProxy.width, croppedArray, width, height)
-
-            Timber.d("image width:height $width:$height")
-            Timber.d("image avgBitmapWidth:avgBitmapHeight $avgBitmapWidth:$avgBitmapHeight")
-            Timber.d("image avgPixels $pixelAvgSize")
-
-            lastTextBitmap = rgbArrayToTextBitmap(croppedArray, width)
-            runtimeCalculator.finish("imageProxyToTextBitmap")
-        }
-        lastTextBitmap
-    }
 
     private fun calculatePixelAvg(sWidth: Int, sHeight: Int) {
         val dWidth = getScreenWidth()
@@ -458,21 +426,28 @@ class AsciiGenerator() {
         if (pixelAvgSize <= 0) pixelAvgSize = 1
     }
 
-    fun getScreenWidth(): Int {
+    private fun getScreenWidth(): Int {
         return Resources.getSystem().displayMetrics.widthPixels
     }
 
-    fun getScreenHeight(): Int {
+    private fun getScreenHeight(): Int {
         return Resources.getSystem().displayMetrics.heightPixels
+    }
+
+    suspend fun imageBitmapToTextBitmap(imageProxy: Bitmap): Bitmap? = withContext(dispatcher) {
+
+        if (!isCapturedState) {
+
+            val outPutArray = imageProxy.getAllPixelsByteArray()
+            processByteArray(outPutArray, imageProxy.width, imageProxy.height)
+
+        }
+        lastTextBitmap
     }
 
     suspend fun imageProxyToTextBitmap(imageProxy: ImageProxy): Bitmap? = withContext(dispatcher) {
 
         if (!isCapturedState) {
-
-            setWidthAndHeight(imageProxy.width, imageProxy.height)
-
-            runtimeCalculator.start("imageProxyToTextBitmap")
 
             val planes = imageProxy.planes
             val buffer = planes[0].buffer
@@ -480,27 +455,38 @@ class AsciiGenerator() {
             val outPutArray = convertByteBufferToByteArray(buffer)
             imageProxy.close()
 
-            croppedArray = ByteArray(width * height * 4)
-
-            if (isNativeLibAvailable)
-                cropArrayNative(
-                    outPutArray,
-                    outPutArray.size,
-                    imageProxy.width,
-                    croppedArray,
-                    width,
-                    height
-                )
-            else
-                cropArray(outPutArray, imageProxy.width, croppedArray, width, height)
-
-            Timber.d("image width:height $width:$height")
-            Timber.d("image avgBitmapWidth:avgBitmapHeight $avgBitmapWidth:$avgBitmapHeight")
-
-            lastTextBitmap = rgbArrayToTextBitmap(croppedArray, width)
-            runtimeCalculator.finish("imageProxyToTextBitmap")
+            processByteArray(outPutArray, imageProxy.width, imageProxy.height)
         }
         lastTextBitmap
+    }
+
+    private suspend fun processByteArray(byteArray: ByteArray, byteArrayImageWidth: Int, byteArrayImageHeight: Int) {
+
+        setWidthAndHeight(byteArrayImageWidth, byteArrayImageHeight)
+
+        croppedArray = ByteArray(width * height * 4)
+
+        if (isNativeLibAvailable)
+            cropArrayNative(
+                byteArray,
+                byteArray.size,
+                byteArrayImageWidth,
+                croppedArray,
+                width,
+                height
+            )
+        else
+            cropArray(byteArray, byteArrayImageWidth, croppedArray, width, height)
+
+        lastTextBitmap = rgbArrayToTextBitmap(croppedArray, width)
+    }
+
+    suspend fun reProcessLastFrame(): Bitmap? {
+        if (isCapturedState){
+            lastTextBitmap = rgbArrayToTextBitmap(croppedArray, width)
+            return lastTextBitmap
+        }
+        return null
     }
 
     private external fun cropArrayNative(

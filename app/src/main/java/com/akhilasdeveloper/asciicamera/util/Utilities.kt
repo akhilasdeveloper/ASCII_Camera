@@ -62,33 +62,6 @@ class Utilities(private val context: Context, private val textGraphicsSorter: Te
         return null
     }
 
-    fun basicAlertDialog(
-        view: View,
-        title: String,
-        negativeText: String,
-        positiveText: String,
-        onApply: (() -> Unit)?,
-        onDismiss: (() -> Unit)?
-    ) {
-        val builder: AlertDialog.Builder =
-            AlertDialog.Builder(context)
-                .setView(view)
-                .setTitle(title)
-                .setNegativeButton(negativeText) { dialog, _ ->
-                    dialog.dismiss()
-                    onDismiss?.invoke()
-                }
-                .setPositiveButton(positiveText) { dialog, _ ->
-
-                    onApply?.invoke()
-
-                    dialog.dismiss()
-                }
-
-        val alertDialog: AlertDialog = builder.create()
-        alertDialog.show()
-    }
-
     fun reverseEditTextChars(charEditText: TextInputEditText) {
         val reversedText = getDensityCharsFromEditText(charEditText).reversed()
         charEditText.setText(reversedText)
