@@ -2,7 +2,6 @@ package com.akhilasdeveloper.asciicamera.ui
 
 import android.Manifest
 import android.content.Context
-import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.AssetManager
@@ -13,7 +12,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.LayoutInflater
-import android.view.Surface
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
@@ -23,11 +21,9 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.core.widget.NestedScrollView
-import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -43,10 +39,7 @@ import com.akhilasdeveloper.asciicamera.util.Constants.BITMAP_PATH
 import com.akhilasdeveloper.asciicamera.util.Constants.DEFAULT_CUSTOM_CHARS
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters
-import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiGenerator
 import com.flask.colorpicker.ColorPickerView
-import com.flask.colorpicker.OnColorSelectedListener
-import com.flask.colorpicker.builder.ColorPickerClickListener
 import com.flask.colorpicker.builder.ColorPickerDialogBuilder
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.common.util.concurrent.ListenableFuture
@@ -67,8 +60,6 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     private var _binding: ActivityMainBinding? = null
     private val binding get() = _binding!!
 
-    private var cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
     @Inject
     lateinit var cameraProvider: ProcessCameraProvider
 
@@ -83,8 +74,6 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     private lateinit var filtersBottomSheetBehavior: BottomSheetBehavior<NestedScrollView>
     private lateinit var addFilterBottomSheetBehavior: BottomSheetBehavior<NestedScrollView>
 
-    @Inject
-    lateinit var utilities: Utilities
     lateinit var customFiltersRecyclerAdapter: CustomFiltersRecyclerAdapter
 
     private lateinit var viewModel: MainViewModel
@@ -94,19 +83,8 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         ActivityResultContracts.StartActivityForResult()
     ) {
         it.data?.data?.let { imageUri ->
-            convertImageFromGallery(imageUri)
+            viewModel.convertImageFromGallery(imageUri)
         }
-    }
-
-    private fun convertImageFromGallery(imageUri: Uri) {
-        val bitmap = utilities.bitmapFromUri(imageUri)
-        val mutableBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-        processBitmap(mutableBitmap)
-    }
-
-    private fun processBitmap(mutableBitmap: Bitmap) {
-        pauseCamera()
-        viewModel.processBitmap(mutableBitmap)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -121,17 +99,11 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     private fun subscribeToObservers() {
 
-        viewModel.lensState.observe(lifecycleScope) {
-            cameraSelector = it
-            loadCamera()
-        }
-
         viewModel.inverseCanvasState.observe(lifecycleScope) {
 
         }
 
         viewModel.customFiltersListState.observe(lifecycleScope) {
-            Timber.d("Rovers :$it")
             customFiltersRecyclerAdapter.submitList(it)
         }
 
@@ -141,7 +113,9 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         }
 
         viewModel.shareAsImageState.observe(lifecycleScope) {
-            shareAsImage(it)
+            it?.let {
+                shareAsImage(it)
+            }
         }
 
         viewModel.setBitmapToImageState.observe(lifecycleScope) {
@@ -152,9 +126,8 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             if (it)
                 revertPanelButtons()
         }
-        viewModel.startCameraState.observe(lifecycleScope) {
-            if (it)
-                startCamera()
+        viewModel.startCameraState.observe(lifecycleScope) {cameraSelector->
+            startCamera(cameraSelector)
         }
         viewModel.pauseCameraState.observe(lifecycleScope) {
             if (it)
@@ -164,13 +137,14 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             if (it)
                 changePanelButtonsToConfirm()
         }
+        viewModel.showEditDensityPopupState.observe(lifecycleScope) {
+            if (it)
+                editDensityPopup()
+        }
 
     }
 
-    private fun editDensityPopup(
-        onApply: ((density: String, densityArray: ByteArray) -> Unit)?,
-        onDismiss: (() -> Unit)?
-    ) {
+    private fun editDensityPopup() {
         val dialogView: LayoutDensityEditorBinding =
             LayoutDensityEditorBinding.inflate(LayoutInflater.from(this))
         val charEditText = dialogView.charactersInput
@@ -178,11 +152,11 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         dialogView.apply {
 
             sortChars.setOnClickListener {
-                utilities.sortEditTextChars(charEditText)
+                viewModel.sortEditTextChars(charEditText)
             }
 
             reversChars.setOnClickListener {
-                utilities.reverseEditTextChars(charEditText)
+                viewModel.reverseEditTextChars(charEditText)
             }
 
         }
@@ -193,19 +167,9 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             negativeText = "Cancel",
             positiveText = "Apply",
             onApply = {
-                lifecycleScope.launch {
-                    val chars = utilities.getDensityCharsFromEditText(charEditText)
-
-                    val array = utilities.generateDensityArray(
-                        chars,
-                        AsciiFilters.WhiteOnBlack.textCharSize
-                    )
-
-                    onApply?.invoke(chars, array)
-                }
+                viewModel.onApplyDensity(charEditText)
             },
             onDismiss = {
-                onDismiss?.invoke()
             }
         )
 
@@ -278,31 +242,24 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
                 addFilterBottomSheetBehavior.hide()
             }
 
-            charactersInput.addTextChangedListener {
-                applyCustomFilterEnteredDetails()
-            }
-
             editChars.setOnClickListener {
-                editDensityPopup(onApply = { density, densityArray ->
-                    viewModel.setAsciiGeneratorValues(
-                        density = density,
-                        densityByteArray = densityArray
-                    )
-                }, onDismiss = {
-
-                })
+                viewModel.showEditDensityPopup()
             }
 
             bgColorDisp.setOnClickListener {
-                onColorSelectButtonClicked(it)
+                onColorSelectButtonClicked(it){
+                    viewModel.setAsciiGeneratorValues(bgColor = it)
+                }
             }
 
             fgColorDisp.setOnClickListener {
-                onColorSelectButtonClicked(it)
+                onColorSelectButtonClicked(it){
+                    viewModel.setAsciiGeneratorValues(bgColor = it)
+                }
             }
 
             radioGroup.setOnCheckedChangeListener { _, _ ->
-                applyCustomFilterEnteredDetails()
+                onRadioButtonSelected()
             }
 
             add.setOnClickListener {
@@ -333,14 +290,14 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         filtersBottomSheetBehavior.addBottomSheetCallback(bottomSheetCallBack)
     }
 
-    private fun onColorSelectButtonClicked(it: View) {
+    private fun onColorSelectButtonClicked(it: View, onResult: (color: Int) -> Unit) {
         val currColor = (it.background as ColorDrawable).color
         fetchColor(currColor, onColorSelect = { col ->
             it.setBackgroundColor(col)
-            applyCustomFilterEnteredDetails()
+            onResult(col)
         }, onCancel = {
             it.setBackgroundColor(currColor)
-            applyCustomFilterEnteredDetails()
+            onResult(currColor)
         })
     }
 
@@ -363,9 +320,8 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         viewModel.flipCamera()
     }
 
-    private fun shareAsImage(bitmap: Bitmap?) {
+    private fun shareAsImage(imageUri: Uri?) {
         lifecycleScope.launch(Dispatchers.IO) {
-            val imageUri: Uri? = utilities.toImageURI(bitmap)
             withContext(Dispatchers.Main) {
                 val shareIntent: Intent = Intent().apply {
                     action = Intent.ACTION_SEND
@@ -418,39 +374,33 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     private fun initAddFilterSheet() {
         getSampleBitmap()?.let { bitmap ->
 //            binding.layoutAddFilterBottomSheet.filterItemImage.generateTextViewFromBitmap(bitmap = bitmap)
-            applyCustomFilterEnteredDetails()
+            onRadioButtonSelected()
         }
     }
 
-    private fun applyCustomFilterEnteredDetails() {
-        viewModel.bottomSheetAddCustomFilterState(FilterSpecs().apply {
-            val density = getDensityFromInput()
-
-            binding.layoutAddFilterBottomSheet.let {
-                this.density = density
-                this.fgColor = (it.fgColorDisp.background as ColorDrawable).color
-                this.bgColor = (it.bgColorDisp.background as ColorDrawable).color
-
-                this.fgColorType = when (it.radioGroup.checkedRadioButtonId) {
-                    R.id.radio_button_none -> {
-                        it.fgColorDisp.visibility = View.VISIBLE
-                        TextBitmapFilter.COLOR_TYPE_NONE
-                    }
-                    R.id.radio_button_ansi -> {
-                        it.fgColorDisp.visibility = View.INVISIBLE
-                        TextBitmapFilter.COLOR_TYPE_ANSI
-                    }
-                    R.id.radio_button_org -> {
-                        it.fgColorDisp.visibility = View.INVISIBLE
-                        TextBitmapFilter.COLOR_TYPE_ORIGINAL
-                    }
-                    else -> {
-                        it.fgColorDisp.visibility = View.VISIBLE
-                        TextBitmapFilter.COLOR_TYPE_NONE
-                    }
+    private fun onRadioButtonSelected() {
+        binding.layoutAddFilterBottomSheet.let {
+            val fgColorType = when (it.radioGroup.checkedRadioButtonId) {
+                R.id.radio_button_none -> {
+                    it.fgColorDisp.visibility = View.VISIBLE
+                    TextBitmapFilter.COLOR_TYPE_NONE
+                }
+                R.id.radio_button_ansi -> {
+                    it.fgColorDisp.visibility = View.INVISIBLE
+                    TextBitmapFilter.COLOR_TYPE_ANSI
+                }
+                R.id.radio_button_org -> {
+                    it.fgColorDisp.visibility = View.INVISIBLE
+                    TextBitmapFilter.COLOR_TYPE_ORIGINAL
+                }
+                else -> {
+                    it.fgColorDisp.visibility = View.VISIBLE
+                    TextBitmapFilter.COLOR_TYPE_NONE
                 }
             }
-        })
+
+            viewModel.setAsciiGeneratorValues(colorType = fgColorType)
+        }
     }
 
     private fun getDensityFromInput(): String =
@@ -461,16 +411,6 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
                 null
         } ?: DEFAULT_CUSTOM_CHARS
 
-
-    private fun loadCamera() {
-        checkPermission(Manifest.permission.CAMERA) {
-
-            if (it)
-                startCamera()
-            else
-                Toast.makeText(this, "Please allow camera permission", Toast.LENGTH_SHORT).show()
-        }
-    }
 
     private fun fetchColor(
         currentColor: Int,
@@ -483,17 +423,17 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             .initialColor(currentColor)
             .wheelType(ColorPickerView.WHEEL_TYPE.CIRCLE)
             .density(12)
-            .setOnColorSelectedListener(OnColorSelectedListener { _ ->
+            .setOnColorSelectedListener {
 
-            })
-            .setPositiveButton("OK",
-                ColorPickerClickListener { _, selectedColor, _ ->
-                    onColorSelect(selectedColor)
-                })
-            .setNegativeButton("cancel", DialogInterface.OnClickListener { dialog, which ->
+            }
+            .setPositiveButton("OK"
+            ) { _, selectedColor, _ ->
+                onColorSelect(selectedColor)
+            }
+            .setNegativeButton("cancel") { dialog, _ ->
                 onCancel()
                 dialog.cancel()
-            })
+            }
             .build()
             .show()
     }
@@ -510,7 +450,8 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         if (!hasFrontCamera()) {
             binding.flipCameraButton.visibility = View.GONE
         } else {
-            cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+            viewModel.setCameraSelector(CameraSelector.DEFAULT_FRONT_CAMERA)
+
         }
 
         viewModel.getLens()
@@ -557,24 +498,31 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         return bitmap
     }
 
-    private fun startCamera() {
+    private fun startCamera(cameraSelector: CameraSelector) {
 
-        cameraProcessProvider.addListener({
+        checkPermission(Manifest.permission.CAMERA) {
+            if (it){
+                cameraProcessProvider.addListener({
 
-            try {
-                cameraProvider = cameraProcessProvider.get()
+                    try {
+                        cameraProvider = cameraProcessProvider.get()
 
-                val analysis = buildImageAnalysisUseCase()
+                        val analysis = buildImageAnalysisUseCase()
 
-                cameraProvider.unbindAll()
+                        cameraProvider.unbindAll()
 
-                cameraProvider.bindToLifecycle(this, cameraSelector, analysis)
+                        cameraProvider.bindToLifecycle(this, cameraSelector, analysis)
 
-            } catch (exc: Exception) {
-                Timber.e("Use case binding failed $exc")
+                    } catch (exc: Exception) {
+                        Timber.e("Use case binding failed $exc")
+                    }
+
+                }, ContextCompat.getMainExecutor(this))
             }
+            else
+                Toast.makeText(this, "Please allow camera permission", Toast.LENGTH_SHORT).show()
+        }
 
-        }, ContextCompat.getMainExecutor(this))
     }
 
 

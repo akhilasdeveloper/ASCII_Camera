@@ -1,17 +1,24 @@
 package com.akhilasdeveloper.asciicamera.ui
 
 import android.graphics.Bitmap
+import android.graphics.drawable.ColorDrawable
+import android.net.Uri
+import android.view.View
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageProxy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
+import com.akhilasdeveloper.asciicamera.R
 import com.akhilasdeveloper.asciicamera.repository.Repository
 import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsTable
 import com.akhilasdeveloper.asciicamera.util.Constants
+import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
+import com.akhilasdeveloper.asciicamera.util.Utilities
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiGenerator
+import com.google.android.material.textfield.TextInputEditText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.*
@@ -22,11 +29,13 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val repository: Repository,
-    private val asciiGenerator: AsciiGenerator
+    private val asciiGenerator: AsciiGenerator,
+    private val utilities: Utilities
 ) : ViewModel() {
 
     private var capturedTextBitmap: Bitmap? = null
     private var capturedRawBitmap: Bitmap? = null
+    private var cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
     init {
         asciiGenerator.setAsciiGeneratedListener(object : AsciiGenerator.OnGeneratedListener {
@@ -58,9 +67,9 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private fun startCamera() {
+    fun startCamera() {
         viewModelScope.launch {
-            _startCameraState.emit(true)
+            _startCameraState.emit(cameraSelector)
         }
     }
 
@@ -70,11 +79,20 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun convertImageFromGallery(imageUri: Uri) {
+        val bitmap = utilities.bitmapFromUri(imageUri)
+        val mutableBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        processBitmap(mutableBitmap)
+    }
+
     private val _lensState = MutableStateFlow(CameraSelector.DEFAULT_BACK_CAMERA)
     val lensState: StateFlow<CameraSelector> = _lensState
 
-    private val _shareAsImageState = MutableStateFlow<Bitmap?>(null)
-    val shareAsImageState: StateFlow<Bitmap?> = _shareAsImageState
+    private val _shareAsImageState = MutableStateFlow<Uri?>(null)
+    val shareAsImageState: StateFlow<Uri?> = _shareAsImageState
+
+    private val _showEditDensityPopupState = MutableStateFlow<Boolean>(false)
+    val showEditDensityPopupState: StateFlow<Boolean> = _showEditDensityPopupState
 
     private val _setBitmapToImageState = MutableStateFlow<Bitmap?>(null)
     val setBitmapToImageState: StateFlow<Bitmap?> = _setBitmapToImageState
@@ -85,8 +103,8 @@ class MainViewModel @Inject constructor(
     private val _changePanelButtonsToConfirmState = MutableStateFlow(false)
     val changePanelButtonsToConfirmState: StateFlow<Boolean> = _changePanelButtonsToConfirmState
 
-    private val _startCameraState = MutableStateFlow(false)
-    val startCameraState: StateFlow<Boolean> = _startCameraState
+    private val _startCameraState = MutableStateFlow(cameraSelector)
+    val startCameraState: StateFlow<CameraSelector> = _startCameraState
 
     private val _pauseCameraState = MutableStateFlow(false)
     val pauseCameraState: StateFlow<Boolean> = _pauseCameraState
@@ -110,7 +128,8 @@ class MainViewModel @Inject constructor(
     fun getLens() {
         repository.getCurrentLens().onEach { lens ->
             isCanvasNeedsToBeInverse(lens)
-            _lensState.emit(lens.toCameraSelector())
+            cameraSelector = lens.toCameraSelector()
+            startCamera()
         }.launchIn(viewModelScope)
     }
 
@@ -137,7 +156,8 @@ class MainViewModel @Inject constructor(
     fun onGalleryButtonClicked() {
         viewModelScope.launch {
             if (asciiGenerator.isCapturedState) {
-                _shareAsImageState.emit(capturedTextBitmap)
+                val imageUri: Uri? = utilities.toImageURI(capturedTextBitmap)
+                _shareAsImageState.emit(imageUri)
             } else {
                 launchPhotoPicker()
             }
@@ -208,6 +228,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun processBitmap(mutableBitmap: Bitmap){
+        pauseCamera()
         viewModelScope.launch {
             val result = asciiGenerator.imageBitmapToTextBitmap(mutableBitmap)
             setBitmapToImage(result)
@@ -274,6 +295,41 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             asciiGenerator.reProcessLastFrame()
         }
+    }
+
+    fun sortEditTextChars(charEditText: TextInputEditText) {
+        utilities.sortEditTextChars(charEditText)
+    }
+
+    fun reverseEditTextChars(charEditText: TextInputEditText) {
+        utilities.reverseEditTextChars(charEditText)
+    }
+
+    fun showEditDensityPopup() {
+        viewModelScope.launch {
+            _showEditDensityPopupState.emit(true)
+        }
+
+    }
+
+    fun onApplyDensity(charEditText: TextInputEditText) {
+        viewModelScope.launch {
+            val chars = utilities.getDensityCharsFromEditText(charEditText)
+
+            val array = utilities.generateDensityArray(
+                chars,
+                AsciiFilters.WhiteOnBlack.textCharSize
+            )
+
+            setAsciiGeneratorValues(
+                density = chars,
+                densityByteArray = array
+            )
+        }
+    }
+
+    fun setCameraSelector(defaultFrontCamera: CameraSelector) {
+        cameraSelector = defaultFrontCamera
     }
 
 }
