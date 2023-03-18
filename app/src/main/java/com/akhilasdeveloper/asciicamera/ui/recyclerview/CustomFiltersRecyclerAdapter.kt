@@ -44,6 +44,8 @@ class CustomFiltersRecyclerAdapter(
 
             fun bindPhoto(photo: FilterSpecs, position: Int) {
 
+                val asciiGenerator = AsciiGenerator()
+
                 asciiGenerator.fgColor = photo.fgColor
                 asciiGenerator.bgColor = photo.bgColor
                 asciiGenerator.density = photo.density

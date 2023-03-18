@@ -121,37 +121,68 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             setBitmapToImage(it)
         }
 
-        viewModel.startCameraState.observe(lifecycleScope) {cameraSelector->
+        viewModel.startCameraState.observe(lifecycleScope) { cameraSelector ->
             startCamera(cameraSelector)
         }
         viewModel.pauseCameraState.observe(lifecycleScope) {
             if (it)
                 pauseCamera()
         }
-        viewModel.changePanelButtonToConfirmState.observe(lifecycleScope){
+        viewModel.changePanelButtonToConfirmState.observe(lifecycleScope) {
             if (it)
                 changePanelButtonsToConfirm()
             else
                 revertPanelButtons()
         }
         viewModel.showEditDensityPopupState.observe(lifecycleScope) {
-            if (it)
-                editDensityPopup()
+            editDensityPopup(it)
         }
 
-        viewModel.filtersCount.observe(lifecycleScope){
+        viewModel.filtersCount.observe(lifecycleScope) {
             Toast.makeText(this, it.toString(), Toast.LENGTH_SHORT).show()
-            if (it<4)
+            if (it < 4)
                 viewModel.generateFilters()
+        }
+
+        viewModel.populateCurrentFilterDetailsToAddFilterBottomSheetState.observe(lifecycleScope) {
+            populateAddFilterBottomSheet(it)
         }
 
     }
 
-    private fun editDensityPopup() {
+    private fun populateAddFilterBottomSheet(it: FilterSpecs) {
+        binding.layoutAddFilterBottomSheet.apply {
+            this.charactersInput.setText(it.density)
+            this.bgColorDisp.setBackgroundColor(it.bgColor)
+            this.fgColorDisp.setBackgroundColor(it.fgColor)
+            this.radioGroup.check(
+                when (it.fgColorType) {
+                    AsciiFilters.COLOR_TYPE_NONE -> {
+                        this.fgColorDisp.visibility = View.VISIBLE
+                        R.id.radio_button_none
+                    }
+                    AsciiFilters.COLOR_TYPE_ANSI -> {
+                        this.fgColorDisp.visibility = View.INVISIBLE
+                        R.id.radio_button_ansi
+                    }
+                    AsciiFilters.COLOR_TYPE_ORIGINAL -> {
+                        this.fgColorDisp.visibility = View.INVISIBLE
+                        R.id.radio_button_org
+                    }
+                    else -> {
+                        this.fgColorDisp.visibility = View.VISIBLE
+                        R.id.radio_button_none
+                    }
+                }
+            )
+        }
+    }
+
+    private fun editDensityPopup(density: String) {
         val dialogView: LayoutDensityEditorBinding =
             LayoutDensityEditorBinding.inflate(LayoutInflater.from(this))
         val charEditText = dialogView.charactersInput
-
+        charEditText.setText(density)
         dialogView.apply {
 
             sortChars.setOnClickListener {
@@ -246,18 +277,18 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             }
 
             editChars.setOnClickListener {
-                viewModel.showEditDensityPopup()
+                viewModel.showEditDensityPopup(charactersInput.text.toString())
             }
 
             bgColorDisp.setOnClickListener {
-                onColorSelectButtonClicked(it){
+                onColorSelectButtonClicked(it) {
                     viewModel.setAsciiGeneratorValues(bgColor = it)
                 }
             }
 
             fgColorDisp.setOnClickListener {
-                onColorSelectButtonClicked(it){
-                    viewModel.setAsciiGeneratorValues(bgColor = it)
+                onColorSelectButtonClicked(it) {
+                    viewModel.setAsciiGeneratorValues(fgColor = it)
                 }
             }
 
@@ -318,11 +349,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     }
 
     private fun onFilterButtonClicked() {
-        if (filtersBottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
-            filtersBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
-        else {
-            filtersBottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
-        }
+        filtersBottomSheetBehavior.toggle()
     }
 
     private fun onFlipCameraButtonClicked() {
@@ -381,10 +408,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     }
 
     private fun initAddFilterSheet() {
-        getSampleBitmap()?.let { bitmap ->
-//            binding.layoutAddFilterBottomSheet.filterItemImage.generateTextViewFromBitmap(bitmap = bitmap)
-            onRadioButtonSelected()
-        }
+        viewModel.populateCurrentFilterDetailsToAddFilterBottomSheet()
     }
 
     private fun onRadioButtonSelected() {
@@ -426,7 +450,8 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             .setOnColorSelectedListener {
 
             }
-            .setPositiveButton("OK"
+            .setPositiveButton(
+                "OK"
             ) { _, selectedColor, _ ->
                 onColorSelect(selectedColor)
             }
@@ -460,7 +485,8 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
         getSampleBitmap()?.let { bitmap ->
 
-            customFiltersRecyclerAdapter = CustomFiltersRecyclerAdapter(this, bitmap, AsciiGenerator(), lifecycleScope)
+            customFiltersRecyclerAdapter =
+                CustomFiltersRecyclerAdapter(this, bitmap, AsciiGenerator(), lifecycleScope)
             binding.layoutFilterBottomSheet.filterItems.adapter = customFiltersRecyclerAdapter
 
             viewModel.getCustomFilters()
@@ -490,7 +516,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     private fun startCamera(cameraSelector: CameraSelector) {
 
         checkPermission(Manifest.permission.CAMERA) {
-            if (it){
+            if (it) {
                 cameraProcessProvider.addListener({
 
                     try {
@@ -505,8 +531,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
                     }
 
                 }, ContextCompat.getMainExecutor(this))
-            }
-            else
+            } else
                 Toast.makeText(this, "Please allow camera permission", Toast.LENGTH_SHORT).show()
         }
 
@@ -539,7 +564,14 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     }
 
     override fun onCustomDeleteClicked(filterSpecs: FilterSpecs) {
-        viewModel.removeCustomFilter(filterSpecs)
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Delete Filter")
+            .setMessage("Do you want to delete this filter?")
+            .setPositiveButton("OK") { _, _ ->
+                viewModel.removeCustomFilter(filterSpecs)
+            }
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .create().show()
     }
 
 }

@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.concurrent.Executor
-import java.util.concurrent.Executors
 import javax.inject.Inject
 
 @HiltViewModel
@@ -93,8 +92,13 @@ class MainViewModel @Inject constructor(
     private val _shareAsImageState = MutableStateFlow<Uri?>(null)
     val shareAsImageState: StateFlow<Uri?> = _shareAsImageState
 
-    private val _showEditDensityPopupState = MutableStateFlow<Boolean>(false)
-    val showEditDensityPopupState: StateFlow<Boolean> = _showEditDensityPopupState
+    private val _populateCurrentFilterDetailsToAddFilterBottomSheetState =
+        MutableStateFlow<FilterSpecs>(FilterSpecs())
+    val populateCurrentFilterDetailsToAddFilterBottomSheetState: StateFlow<FilterSpecs> =
+        _populateCurrentFilterDetailsToAddFilterBottomSheetState
+
+    private val _showEditDensityPopupState = MutableSharedFlow<String>()
+    val showEditDensityPopupState: SharedFlow<String> = _showEditDensityPopupState
 
     private val _changePanelButtonToConfirmState = MutableStateFlow<Boolean>(false)
     val changePanelButtonToConfirmState: StateFlow<Boolean> = _changePanelButtonToConfirmState
@@ -207,7 +211,16 @@ class MainViewModel @Inject constructor(
 
     fun removeCustomFilter(filterSpecs: FilterSpecs) {
         viewModelScope.launch {
-//            repository.deleteCustomFilter(filterSpecsTableFromData(filterSpecs))
+            repository.deleteCustomFilter(
+                FilterSpecsTable(
+                    id = filterSpecs.id,
+                    density = filterSpecs.density,
+                    fgColor = filterSpecs.fgColor,
+                    bgColor = filterSpecs.bgColor,
+                    fgColorType = filterSpecs.fgColorType,
+                    densityArray = filterSpecs.densityArray
+                )
+            )
         }
     }
 
@@ -304,9 +317,9 @@ class MainViewModel @Inject constructor(
         utilities.reverseEditTextChars(charEditText)
     }
 
-    fun showEditDensityPopup() {
+    fun showEditDensityPopup(density: String) {
         viewModelScope.launch {
-            _showEditDensityPopupState.emit(true)
+            _showEditDensityPopupState.emit(density)
         }
 
     }
@@ -354,6 +367,20 @@ class MainViewModel @Inject constructor(
             filters.forEach {
                 repository.addFilter(it)
             }
+        }
+    }
+
+    fun populateCurrentFilterDetailsToAddFilterBottomSheet() {
+        viewModelScope.launch {
+            _populateCurrentFilterDetailsToAddFilterBottomSheetState.emit(
+                FilterSpecs(
+                    fgColor = asciiGenerator.fgColor,
+                    bgColor = asciiGenerator.bgColor,
+                    density = asciiGenerator.density,
+                    densityArray = asciiGenerator._densityIntArray,
+                    fgColorType = asciiGenerator.colorType
+                )
+            )
         }
     }
 
