@@ -3,12 +3,14 @@ package com.akhilasdeveloper.asciicamera.util
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.view.View
 import androidx.camera.core.ImageProxy
 import androidx.core.graphics.get
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.akhilasdeveloper.asciicamera.util.Constants.ASCII_DB_NAME
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
@@ -42,15 +44,33 @@ inline fun Bitmap.forEachIndexed(action: (x: Int, y: Int, pixel: Int) -> Unit): 
             action(x, y, get(x, y))
 }
 
-fun Bitmap.getAllPixelsBytes(byteArray: ByteArray){
+fun Bitmap.getAllPixelsBytes(byteArray: ByteArray) {
     val intArray = IntArray(width * height)
-    getPixels(intArray, 0,width,0,0,width, height)
+    getPixels(intArray, 0, width, 0, 0, width, height)
     intArray.forEachIndexed { index, i ->
         byteArray[index] = (i and 0xff).toByte()
     }
 }
 
+fun <T : View> BottomSheetBehavior<T>.toggle(
+    expanded: (() -> Unit)? = null,
+    hided: (() -> Unit)? = null
+) {
+    if (state == BottomSheetBehavior.STATE_EXPANDED) {
+        state = BottomSheetBehavior.STATE_HIDDEN
+        hided?.invoke()
+    } else {
+        state = BottomSheetBehavior.STATE_EXPANDED
+        expanded?.invoke()
+    }
+}
 
+fun <T : View> BottomSheetBehavior<T>.hide(
+) {
+    if (state == BottomSheetBehavior.STATE_EXPANDED) {
+        state = BottomSheetBehavior.STATE_HIDDEN
+    }
+}
 
 fun Float.map(
     startValue: Float,
@@ -73,7 +93,7 @@ fun IntArray.getSubPixels(
 ): IntArray {
     val yEnd = yStart + destHeight
     val xEnd = xStart + destWidth
-    val subArray = mutableListOf <Int>()
+    val subArray = mutableListOf<Int>()
 
     for (i in yStart until yEnd) {
         val row: IntArray = sliceArray(i * width + xStart until i * width + xEnd)
@@ -115,7 +135,7 @@ fun ByteArray.getSubPixels(
 ): ByteArray {
     val yEnd = yStart + destHeight
     val xEnd = xStart + destWidth
-    val subArray = mutableListOf <Byte>()
+    val subArray = mutableListOf<Byte>()
 
     for (i in yStart until yEnd) {
         val row: ByteArray = sliceArray(i * width + xStart until i * width + xEnd)

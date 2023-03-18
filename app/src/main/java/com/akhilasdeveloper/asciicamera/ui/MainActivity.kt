@@ -8,10 +8,8 @@ import android.content.pm.PackageManager
 import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.ImageDecoder
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.LayoutInflater
@@ -21,7 +19,6 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -68,22 +65,20 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     private var _binding: ActivityMainBinding? = null
     private val binding get() = _binding!!
-    private lateinit var cameraExecutor: Executor
 
     private var cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-    private lateinit var bottomSheetBehavior: BottomSheetBehavior<NestedScrollView>
-    private lateinit var createFilterBottomSheetBehavior: BottomSheetBehavior<NestedScrollView>
+    private var cameraProvider: ProcessCameraProvider? = null
+    private lateinit var cameraProcessProvider: ListenableFuture<ProcessCameraProvider>
+    private lateinit var cameraExecutor: Executor
 
-    @Inject
-    lateinit var textGraphicsSorter: TextGraphicsSorter
+    private lateinit var filtersBottomSheetBehavior: BottomSheetBehavior<NestedScrollView>
+    private lateinit var addFilterBottomSheetBehavior: BottomSheetBehavior<NestedScrollView>
 
     @Inject
     lateinit var utilities: Utilities
     lateinit var customFiltersRecyclerAdapter: CustomFiltersRecyclerAdapter
-    private var capturedBitmap: Bitmap? = null
-
-    private var cameraProvider: ProcessCameraProvider? = null
-    lateinit var cameraProcessProvider: ListenableFuture<ProcessCameraProvider>
+    private var capturedTextBitmap: Bitmap? = null
+    private var capturedRawBitmap: Bitmap? = null
 
     private lateinit var viewModel: MainViewModel
     private var sampleBitmap: Bitmap? = null
@@ -94,28 +89,28 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         ActivityResultContracts.StartActivityForResult()
     ) {
         it.data?.data?.let { imageUri ->
+            convertImageFromGallery(imageUri)
+        }
+    }
 
-            val bitmap = if (Build.VERSION.SDK_INT < 28) {
-                MediaStore.Images.Media.getBitmap(
-                    this.contentResolver,
-                    imageUri
-                )
-            } else {
-                val source = ImageDecoder.createSource(this.contentResolver, imageUri)
-                ImageDecoder.decodeBitmap(source)
-            }
-            lifecycleScope.launch {
-                pauseCamera()
-                asciiGenerator.imageBitmapToTextBitmap(bitmap.copy(Bitmap.Config.ARGB_8888, true))
-                    ?.let { bitmap ->
-                        setBitmapToImage(bitmap)
-                    }
-                asciiGenerator.capture()
-            }
+    private fun convertImageFromGallery(imageUri: Uri) {
+        val bitmap = utilities.bitmapFromUri(imageUri)
+        val mutableBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        capturedRawBitmap = mutableBitmap
+        processBitmap(mutableBitmap)
+    }
 
-            /*textCanvasView.generateTextViewFromBitmap(
-                bitmap.copy(Bitmap.Config.ARGB_8888, true)
-            )*/
+    private fun reprocessLastBitmap(){
+        capturedRawBitmap?.let {
+            processBitmap(it)
+        }
+    }
+    private fun processBitmap(mutableBitmap: Bitmap) {
+        lifecycleScope.launch {
+            pauseCamera()
+            val result = asciiGenerator.imageBitmapToTextBitmap(mutableBitmap)
+            setBitmapToImage(result)
+            asciiGenerator.capture()
         }
     }
 
@@ -153,48 +148,35 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     }
 
-    private fun editDensity(
+    private fun editDensityPopup(
         onApply: ((density: String, densityArray: ByteArray) -> Unit)?,
         onDismiss: (() -> Unit)?
     ) {
         val dialogView: LayoutDensityEditorBinding =
             LayoutDensityEditorBinding.inflate(LayoutInflater.from(this))
-        val builder: AlertDialog.Builder =
-            AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
-                .setView(dialogView.root)
-        val alertDialog: AlertDialog = builder.create()
+        val charEditText = dialogView.charactersInput
 
         dialogView.apply {
+
             sortChars.setOnClickListener {
-                charactersInput.setText(textGraphicsSorter.sortTextByBrightness(
-                    charactersInput.text?.let {
-                        if (it.isNotEmpty())
-                            it.toString()
-                        else
-                            null
-                    } ?: DEFAULT_CUSTOM_CHARS
-                ))
+                utilities.sortEditTextChars(charEditText)
             }
 
             reversChars.setOnClickListener {
-                charactersInput.setText(
-                    (charactersInput.text?.let {
-                        if (it.isNotEmpty())
-                            it.toString()
-                        else
-                            null
-                    } ?: DEFAULT_CUSTOM_CHARS).reversed()
-                )
+                utilities.reverseEditTextChars(charEditText)
             }
 
-            apply.setOnClickListener {
+        }
+
+        utilities.basicAlertDialog(
+            view = dialogView.root,
+            title = "Edit Density",
+            negativeText = "Cancel",
+            positiveText = "Apply",
+            onApply = {
                 lifecycleScope.launch {
-                    val chars = charactersInput.text?.let {
-                        if (it.isNotEmpty())
-                            it.toString()
-                        else
-                            null
-                    } ?: DEFAULT_CUSTOM_CHARS
+                    val chars = utilities.getDensityCharsFromEditText(charEditText)
+
                     val array = utilities.generateDensityArray(
                         chars,
                         AsciiFilters.WhiteOnBlack.textCharSize
@@ -202,125 +184,29 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
                     onApply?.invoke(chars, array)
                 }
-                alertDialog.dismiss()
-            }
-
-            cancel.setOnClickListener {
-                alertDialog.dismiss()
+            },
+            onDismiss = {
                 onDismiss?.invoke()
             }
-        }
-
-        alertDialog.show()
+        )
 
     }
 
     private fun setClickListeners() {
         binding.flipCameraButton.setOnClickListener {
-            if (asciiGenerator.isCapturedState) {
-                asciiGenerator.continueStream()
-            } else
-                viewModel.toggleCamera()
+            onFlipCameraButtonClicked()
         }
+
         binding.filterButton.setOnClickListener {
-
-            if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
-                bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
-            else {
-                bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
-            }
-
+            onFilterButtonClicked()
         }
 
         binding.galleryButton.setOnClickListener {
-            if (asciiGenerator.isCapturedState) {
-                showShareOption()
-            } else {
-                val galleryIntent = Intent(Intent.ACTION_PICK)
-                galleryIntent.data = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-                requestGallery.launch(galleryIntent)
-            }
-        }
-
-        binding.layoutFilterBottomSheet.closeFilterSheet.setOnClickListener {
-            if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
-                bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
-        }
-
-        binding.layoutFilterBottomSheet.addCustomFilter.setOnClickListener {
-            if (createFilterBottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
-                createFilterBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
-            else {
-                createFilterBottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
-                initAddFilterSheet()
-            }
-        }
-
-        binding.layoutAddFilterBottomSheet.closeFilterSheet.setOnClickListener {
-            if (createFilterBottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
-                createFilterBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+            onGalleryButtonClicked()
         }
 
         binding.captureButton.setOnClickListener {
             asciiGenerator.capture()
-        }
-
-        binding.layoutAddFilterBottomSheet.charactersInput.addTextChangedListener {
-            applyCustomFilterEnteredDetails()
-        }
-
-        binding.layoutAddFilterBottomSheet.editChars.setOnClickListener {
-            editDensity(onApply = { density, densityArray ->
-                asciiGenerator.density = density
-                asciiGenerator._densityIntArray = densityArray
-            }, onDismiss = {
-
-            })
-        }
-
-        /*binding.layoutAddFilterBottomSheet.sortChars.setOnClickListener {
-            binding.layoutAddFilterBottomSheet.charactersInput.setText(
-                textGraphicsSorter.sortTextByBrightness(
-                    getDensityFromInput()
-                )
-            )
-        }
-
-        binding.layoutAddFilterBottomSheet.reversChars.setOnClickListener {
-            binding.layoutAddFilterBottomSheet.charactersInput.setText(getDensityFromInput().reversed())
-        }*/
-
-        binding.layoutAddFilterBottomSheet.bgColorDisp.setOnClickListener {
-            val currColor =
-                (binding.layoutAddFilterBottomSheet.bgColorDisp.background as ColorDrawable).color
-            fetchColor(currColor, onColorSelect = {
-                binding.layoutAddFilterBottomSheet.bgColorDisp.setBackgroundColor(it)
-                applyCustomFilterEnteredDetails()
-            }, onCancel = {
-                binding.layoutAddFilterBottomSheet.bgColorDisp.setBackgroundColor(currColor)
-                applyCustomFilterEnteredDetails()
-            })
-        }
-
-        binding.layoutAddFilterBottomSheet.fgColorDisp.setOnClickListener {
-            val currColor =
-                (binding.layoutAddFilterBottomSheet.fgColorDisp.background as ColorDrawable).color
-            fetchColor(currColor, onColorSelect = {
-                binding.layoutAddFilterBottomSheet.fgColorDisp.setBackgroundColor(it)
-                applyCustomFilterEnteredDetails()
-            }, onCancel = {
-                binding.layoutAddFilterBottomSheet.fgColorDisp.setBackgroundColor(currColor)
-                applyCustomFilterEnteredDetails()
-            })
-        }
-
-        binding.layoutAddFilterBottomSheet.radioGroup.setOnCheckedChangeListener { _, _ ->
-            applyCustomFilterEnteredDetails()
-        }
-
-        binding.layoutAddFilterBottomSheet.add.setOnClickListener {
-            viewModel.addCustomFilters(viewModel.bottomSheetAddCustomFilterState.value)
-            createFilterBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
         }
 
         val bottomSheetCallBack = object : BottomSheetBehavior.BottomSheetCallback() {
@@ -332,27 +218,128 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             override fun onSlide(bottomSheet: View, slideOffset: Float) {
 
             }
-
         }
 
-        bottomSheetBehavior.addBottomSheetCallback(bottomSheetCallBack)
-        createFilterBottomSheetBehavior.addBottomSheetCallback(bottomSheetCallBack)
+        setFiltersBottomSheetListeners(bottomSheetCallBack)
+        setAddFilterBottomSheetListeners(bottomSheetCallBack)
 
         asciiGenerator.setAsciiGeneratedListener(object : AsciiGenerator.OnGeneratedListener {
 
             override fun onContinue() {
-                capturedBitmap = null
+                capturedTextBitmap = null
                 revertPanelButtons()
                 startCamera()
             }
 
-            override fun onCapture(bitmap: Bitmap?) {
-                capturedBitmap = bitmap
+            override fun onCapture(bitmap: Bitmap?, lastRawBitmap: Bitmap) {
+                capturedTextBitmap = bitmap
+                capturedRawBitmap = lastRawBitmap
                 changePanelButtonsToConfirm()
                 pauseCamera()
             }
         })
 
+    }
+
+    private fun setAddFilterBottomSheetListeners(bottomSheetCallBack: BottomSheetBehavior.BottomSheetCallback) {
+        binding.layoutAddFilterBottomSheet.apply {
+
+            closeFilterSheet.setOnClickListener {
+                addFilterBottomSheetBehavior.hide()
+            }
+
+            charactersInput.addTextChangedListener {
+                applyCustomFilterEnteredDetails()
+            }
+
+            editChars.setOnClickListener {
+                editDensityPopup(onApply = { density, densityArray ->
+                    asciiGenerator.density = density
+                    asciiGenerator._densityIntArray = densityArray
+                }, onDismiss = {
+
+                })
+            }
+
+            bgColorDisp.setOnClickListener {
+                onColorSelectButtonClicked(it)
+            }
+
+            fgColorDisp.setOnClickListener {
+                onColorSelectButtonClicked(it)
+            }
+
+            radioGroup.setOnCheckedChangeListener { _, _ ->
+                applyCustomFilterEnteredDetails()
+            }
+
+            add.setOnClickListener {
+                viewModel.addCustomFilters(viewModel.bottomSheetAddCustomFilterState.value)
+                addFilterBottomSheetBehavior.hide()
+            }
+        }
+
+        addFilterBottomSheetBehavior = BottomSheetBehavior.from(binding.filterBottomSheet)
+        addFilterBottomSheetBehavior.isGestureInsetBottomIgnored = true
+        addFilterBottomSheetBehavior.addBottomSheetCallback(bottomSheetCallBack)
+    }
+
+    private fun setFiltersBottomSheetListeners(bottomSheetCallBack: BottomSheetBehavior.BottomSheetCallback) {
+        binding.layoutFilterBottomSheet.apply {
+
+            closeFilterSheet.setOnClickListener {
+                filtersBottomSheetBehavior.hide()
+            }
+
+            addCustomFilter.setOnClickListener {
+                addFilterBottomSheetBehavior.toggle(expanded = {
+                    initAddFilterSheet()
+                })
+            }
+        }
+        filtersBottomSheetBehavior = BottomSheetBehavior.from(binding.bottomSheet)
+        filtersBottomSheetBehavior.isGestureInsetBottomIgnored = true
+        filtersBottomSheetBehavior.addBottomSheetCallback(bottomSheetCallBack)
+    }
+
+    private fun onColorSelectButtonClicked(it: View) {
+        val currColor = (it.background as ColorDrawable).color
+        fetchColor(currColor, onColorSelect = { col ->
+            it.setBackgroundColor(col)
+            applyCustomFilterEnteredDetails()
+        }, onCancel = {
+            it.setBackgroundColor(currColor)
+            applyCustomFilterEnteredDetails()
+        })
+    }
+
+    private fun onGalleryButtonClicked() {
+        if (asciiGenerator.isCapturedState) {
+            showShareOption()
+        } else {
+            launchPhotoPicker()
+        }
+    }
+
+    private fun launchPhotoPicker() {
+        val galleryIntent = Intent(Intent.ACTION_PICK)
+        galleryIntent.data = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        requestGallery.launch(galleryIntent)
+    }
+
+    private fun onFilterButtonClicked() {
+        if (filtersBottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED)
+            filtersBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+        else {
+            filtersBottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
+        }
+    }
+
+    private fun onFlipCameraButtonClicked() {
+        if (asciiGenerator.isCapturedState) {
+            asciiGenerator.continueStream()
+        } else
+            viewModel.toggleCamera()
     }
 
     private fun showShareOption() {
@@ -361,7 +348,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     private fun shareAsImage() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val imageUri: Uri? = utilities.toImageURI(capturedBitmap)
+            val imageUri: Uri? = utilities.toImageURI(capturedTextBitmap)
             withContext(Dispatchers.Main) {
                 val shareIntent: Intent = Intent().apply {
                     action = Intent.ACTION_SEND
@@ -499,6 +486,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         viewModel = ViewModelProvider(this@MainActivity)[MainViewModel::class.java]
         cameraExecutor = Executors.newSingleThreadExecutor()
         cameraProcessProvider = ProcessCameraProvider.getInstance(this)
+
         asciiGenerator.changeFilter(AsciiFilters.WhiteOnBlack)
         asciiGenerator.setDispatcher(cameraExecutor.asCoroutineDispatcher())
 
@@ -507,13 +495,8 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         } else {
             cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
         }
+
         viewModel.getLens()
-
-        bottomSheetBehavior = BottomSheetBehavior.from(binding.bottomSheet)
-        bottomSheetBehavior.isGestureInsetBottomIgnored = true
-
-        createFilterBottomSheetBehavior = BottomSheetBehavior.from(binding.filterBottomSheet)
-        createFilterBottomSheetBehavior.isGestureInsetBottomIgnored = true
 
         binding.layoutFilterBottomSheet.filterItems.layoutManager = LinearLayoutManager(
             this@MainActivity,

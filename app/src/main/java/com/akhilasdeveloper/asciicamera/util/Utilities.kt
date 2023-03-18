@@ -3,10 +3,16 @@ package com.akhilasdeveloper.asciicamera.util
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.ImageDecoder
 import android.graphics.Rect
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import android.text.TextPaint
+import android.view.View
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.FileProvider
+import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -14,7 +20,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
-class Utilities(private val context: Context) {
+class Utilities(private val context: Context, private val textGraphicsSorter: TextGraphicsSorter) {
 
     suspend fun toImageURI(bitmap: Bitmap?): Uri? {
         bitmap?.let {
@@ -56,6 +62,61 @@ class Utilities(private val context: Context) {
         return null
     }
 
+    fun basicAlertDialog(
+        view: View,
+        title: String,
+        negativeText: String,
+        positiveText: String,
+        onApply: (() -> Unit)?,
+        onDismiss: (() -> Unit)?
+    ) {
+        val builder: AlertDialog.Builder =
+            AlertDialog.Builder(context)
+                .setView(view)
+                .setTitle(title)
+                .setNegativeButton(negativeText) { dialog, _ ->
+                    dialog.dismiss()
+                    onDismiss?.invoke()
+                }
+                .setPositiveButton(positiveText) { dialog, _ ->
+
+                    onApply?.invoke()
+
+                    dialog.dismiss()
+                }
+
+        val alertDialog: AlertDialog = builder.create()
+        alertDialog.show()
+    }
+
+    fun reverseEditTextChars(charEditText: TextInputEditText) {
+        val reversedText = getDensityCharsFromEditText(charEditText).reversed()
+        charEditText.setText(reversedText)
+    }
+
+    fun sortEditTextChars(charEditText: TextInputEditText) {
+        val sortedText =
+            textGraphicsSorter.sortTextByBrightness(getDensityCharsFromEditText(charEditText))
+        charEditText.setText(sortedText)
+    }
+
+    fun getDensityCharsFromEditText(charEditText: TextInputEditText) =
+        charEditText.text?.let {
+            if (it.isNotEmpty())
+                it.toString()
+            else
+                null
+        } ?: Constants.DEFAULT_CUSTOM_CHARS
+
+    fun bitmapFromUri(imageUri: Uri): Bitmap = if (Build.VERSION.SDK_INT < 28) {
+        MediaStore.Images.Media.getBitmap(
+            context.contentResolver,
+            imageUri
+        )
+    } else {
+        val source = ImageDecoder.createSource(context.contentResolver, imageUri)
+        ImageDecoder.decodeBitmap(source)
+    }
     suspend fun generateDensityArray(density: String, textSize: Float): ByteArray {
         val canvas = Canvas()
         val textSizeInt = textSize.toInt()
@@ -73,7 +134,8 @@ class Utilities(private val context: Context) {
 
         density.toCharArray().forEachIndexed { index, c ->
             paint.getTextBounds(c.toString(), 0, 1, textBounds)
-            canvas.drawText(c.toString(),
+            canvas.drawText(
+                c.toString(),
                 (textSize / 2f) - textBounds.exactCenterX(),
                 (index * textSize) + ((textSize / 2f) - textBounds.exactCenterY()),
                 paint

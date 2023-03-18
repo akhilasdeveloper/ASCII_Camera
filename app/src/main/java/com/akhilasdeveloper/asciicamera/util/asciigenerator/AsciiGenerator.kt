@@ -54,6 +54,7 @@ class AsciiGenerator() {
     private var avgBitmapWidth = 1 //
     private var avgBitmapHeight = 1 //
 
+    private lateinit var croppedArray: ByteArray
     private var resultArray = IntArray(width * height)
     private var asciiIndexArray = IntArray(avgBitmapWidth * avgBitmapHeight)
     private var asciiColorArray = IntArray(avgBitmapWidth * avgBitmapHeight)
@@ -62,7 +63,8 @@ class AsciiGenerator() {
     private var dispatcher = Dispatchers.Default
 
     private var mListener: OnGeneratedListener? = null
-    private var lastBitmap: Bitmap? = null
+    private var lastTextBitmap: Bitmap? = null
+    private var lastRawBitmap: Bitmap? = null
     var isCapturedState = false
         private set
 
@@ -73,7 +75,11 @@ class AsciiGenerator() {
 
     fun capture() {
         isCapturedState = true
-        mListener?.onCapture(lastBitmap)
+
+        val lastRawBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        lastRawBitmap.copyPixelsFromBuffer(ByteBuffer.wrap(croppedArray))
+        this.lastRawBitmap = lastRawBitmap
+        mListener?.onCapture(lastTextBitmap, lastRawBitmap)
     }
 
     fun setDispatcher(dispatcher: CoroutineDispatcher) {
@@ -415,7 +421,7 @@ class AsciiGenerator() {
 
             val outPutArray = imageProxy.getAllPixelsByteArray()
 
-            val croppedArray = ByteArray(width * height * 4)
+            croppedArray = ByteArray(width * height * 4)
             if (isNativeLibAvailable)
                 cropArrayNative(
                     outPutArray,
@@ -432,10 +438,10 @@ class AsciiGenerator() {
             Timber.d("image avgBitmapWidth:avgBitmapHeight $avgBitmapWidth:$avgBitmapHeight")
             Timber.d("image avgPixels $pixelAvgSize")
 
-            lastBitmap = rgbArrayToTextBitmap(croppedArray, width)
+            lastTextBitmap = rgbArrayToTextBitmap(croppedArray, width)
             runtimeCalculator.finish("imageProxyToTextBitmap")
         }
-        lastBitmap
+        lastTextBitmap
     }
 
     private fun calculatePixelAvg(sWidth: Int, sHeight: Int) {
@@ -473,7 +479,9 @@ class AsciiGenerator() {
 
             val outPutArray = convertByteBufferToByteArray(buffer)
             imageProxy.close()
-            val croppedArray = ByteArray(width * height * 4)
+
+            croppedArray = ByteArray(width * height * 4)
+
             if (isNativeLibAvailable)
                 cropArrayNative(
                     outPutArray,
@@ -489,10 +497,10 @@ class AsciiGenerator() {
             Timber.d("image width:height $width:$height")
             Timber.d("image avgBitmapWidth:avgBitmapHeight $avgBitmapWidth:$avgBitmapHeight")
 
-            lastBitmap = rgbArrayToTextBitmap(croppedArray, width)
+            lastTextBitmap = rgbArrayToTextBitmap(croppedArray, width)
             runtimeCalculator.finish("imageProxyToTextBitmap")
         }
-        lastBitmap
+        lastTextBitmap
     }
 
     private external fun cropArrayNative(
@@ -583,7 +591,7 @@ class AsciiGenerator() {
 
     interface OnGeneratedListener {
         fun onContinue()
-        fun onCapture(bitmap: Bitmap?)
+        fun onCapture(bitmap: Bitmap?, lastRawBitmap: Bitmap)
     }
 
     private fun Bitmap.getAllPixelsByteArray(): ByteArray {

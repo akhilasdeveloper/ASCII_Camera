@@ -40,8 +40,8 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun provideUtilities( @ApplicationContext app: Context): Utilities {
-        return Utilities(app)
+    fun provideUtilities( @ApplicationContext app: Context, textGraphicsSorter: TextGraphicsSorter): Utilities {
+        return Utilities(app, textGraphicsSorter)
     }
 
     @Singleton
