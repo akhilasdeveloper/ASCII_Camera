@@ -31,13 +31,13 @@ import com.akhilasdeveloper.asciicamera.R
 import com.akhilasdeveloper.asciicamera.databinding.ActivityMainBinding
 import com.akhilasdeveloper.asciicamera.databinding.LayoutDensityEditorBinding
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.CustomFiltersRecyclerAdapter
-import com.akhilasdeveloper.asciicamera.ui.recyclerview.FiltersRecyclerAdapter
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerCustomFiltersClickListener
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerFiltersClickListener
 import com.akhilasdeveloper.asciicamera.util.*
 import com.akhilasdeveloper.asciicamera.util.Constants.BITMAP_PATH
-import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters
+import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters.Companion.FilterSpecs
+import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiGenerator
 import com.flask.colorpicker.ColorPickerView
 import com.flask.colorpicker.builder.ColorPickerDialogBuilder
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -140,8 +140,9 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         }
 
         viewModel.filtersCount.observe(lifecycleScope){
+            Toast.makeText(this, it.toString(), Toast.LENGTH_SHORT).show()
             if (it<4)
-                Toast.makeText(this, "Filters are not generated", Toast.LENGTH_SHORT).show()
+                viewModel.generateFilters()
         }
 
     }
@@ -266,6 +267,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
             add.setOnClickListener {
                 addFilterBottomSheetBehavior.hide()
+                viewModel.saveCurrentFilter()
             }
         }
 
@@ -296,10 +298,6 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             LinearLayoutManager.HORIZONTAL, false
         )
 
-        binding.layoutFilterBottomSheet.customFilterItems.layoutManager = LinearLayoutManager(
-            this@MainActivity,
-            LinearLayoutManager.HORIZONTAL, false
-        )
     }
 
     private fun onColorSelectButtonClicked(it: View, onResult: (color: Int) -> Unit) {
@@ -462,12 +460,9 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
         getSampleBitmap()?.let { bitmap ->
 
-            customFiltersRecyclerAdapter = CustomFiltersRecyclerAdapter(this, bitmap)
-            binding.layoutFilterBottomSheet.customFilterItems.adapter = customFiltersRecyclerAdapter
-            binding.layoutFilterBottomSheet.filterItems.adapter =
-                FiltersRecyclerAdapter(this, bitmap).also {
-                    it.submitList(TextBitmapFilter.listOfFilters)
-                }
+            customFiltersRecyclerAdapter = CustomFiltersRecyclerAdapter(this, bitmap, AsciiGenerator(), lifecycleScope)
+            binding.layoutFilterBottomSheet.filterItems.adapter = customFiltersRecyclerAdapter
+
             viewModel.getCustomFilters()
         }
 
@@ -534,7 +529,13 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     }
 
     override fun onCustomItemClicked(filterSpecs: FilterSpecs) {
-
+        viewModel.setAsciiGeneratorValues(
+            fgColor = filterSpecs.fgColor,
+            bgColor = filterSpecs.bgColor,
+            density = filterSpecs.density,
+            densityByteArray = filterSpecs.densityArray,
+            colorType = filterSpecs.fgColorType
+        )
     }
 
     override fun onCustomDeleteClicked(filterSpecs: FilterSpecs) {

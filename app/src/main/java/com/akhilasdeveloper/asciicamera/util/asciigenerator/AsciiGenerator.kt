@@ -476,12 +476,11 @@ class AsciiGenerator() {
         lastTextBitmap = rgbArrayToTextBitmap(croppedArray, width)
     }
 
-    suspend fun reProcessLastFrame(): Bitmap? {
+    suspend fun reProcessLastFrame() {
         if (isCapturedState){
             lastTextBitmap = rgbArrayToTextBitmap(croppedArray, width)
-            return lastTextBitmap
+            capture()
         }
-        return null
     }
 
     private external fun cropArrayNative(

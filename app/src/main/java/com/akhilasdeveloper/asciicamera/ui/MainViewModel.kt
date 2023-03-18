@@ -10,9 +10,10 @@ import androidx.lifecycle.viewModelScope
 import com.akhilasdeveloper.asciicamera.repository.Repository
 import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsTable
 import com.akhilasdeveloper.asciicamera.util.Constants
-import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
+import com.akhilasdeveloper.asciicamera.util.FilterGenerator
 import com.akhilasdeveloper.asciicamera.util.Utilities
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters
+import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters.Companion.FilterSpecs
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiGenerator
 import com.google.android.material.textfield.TextInputEditText
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,6 +30,7 @@ class MainViewModel @Inject constructor(
     private val repository: Repository,
     private val asciiGenerator: AsciiGenerator,
     private val imageAnalysis: ImageAnalysis,
+    private val filterGenerator: FilterGenerator,
     private val utilities: Utilities
 ) : ViewModel() {
 
@@ -209,22 +211,22 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun flipCamera(){
+    fun flipCamera() {
         if (asciiGenerator.isCapturedState) {
             asciiGenerator.continueStream()
         } else
             toggleCamera()
     }
 
-    fun asciiGeneratorChangeFilter(filter: AsciiFilters){
+    fun asciiGeneratorChangeFilter(filter: AsciiFilters) {
         asciiGenerator.changeFilter(filter)
     }
 
-    fun setAsciiGeneratorDispatcher(dispatcher: CoroutineDispatcher){
+    fun setAsciiGeneratorDispatcher(dispatcher: CoroutineDispatcher) {
         asciiGenerator.setDispatcher(dispatcher)
     }
 
-    fun processBitmap(mutableBitmap: Bitmap){
+    fun processBitmap(mutableBitmap: Bitmap) {
         pauseCamera()
         viewModelScope.launch {
             val result = asciiGenerator.imageBitmapToTextBitmap(mutableBitmap)
@@ -334,6 +336,38 @@ class MainViewModel @Inject constructor(
             setAnalyzer(cameraExecutor) { imageProxy ->
                 generateTextView(imageProxy)
             }
+        }
+    }
+
+    fun generateFilters() {
+        viewModelScope.launch {
+            val filters = filterGenerator.generateFilters().map {
+                FilterSpecsTable(
+                    id = it.id,
+                    density = it.density,
+                    fgColor = it.fgColor,
+                    bgColor = it.bgColor,
+                    fgColorType = it.fgColorType,
+                    densityArray = it.densityArray
+                )
+            }
+            filters.forEach {
+                repository.addFilter(it)
+            }
+        }
+    }
+
+    fun saveCurrentFilter() {
+        viewModelScope.launch {
+            repository.addFilter(
+                FilterSpecsTable(
+                    fgColor = asciiGenerator.fgColor,
+                    bgColor = asciiGenerator.bgColor,
+                    density = asciiGenerator.density,
+                    densityArray = asciiGenerator._densityIntArray,
+                    fgColorType = asciiGenerator.colorType
+                )
+            )
         }
     }
 

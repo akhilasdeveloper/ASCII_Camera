@@ -10,6 +10,7 @@ sealed class AsciiFilters {
     abstract val density: String
     abstract val fgColor: Int
     abstract val bgColor: Int
+    abstract val fgColorType: Int
     var textCharSize = 10f
 
     companion object {
@@ -28,10 +29,37 @@ sealed class AsciiFilters {
         data class FilterSpecs(
             var id: Long? = null,
             var density: String = Constants.DEFAULT_CUSTOM_CHARS,
+            var densityArray: ByteArray = byteArrayOf(),
             var fgColor: Int = Color.WHITE,
             var fgColorType: Int = COLOR_TYPE_NONE,
             var bgColor: Int = Color.BLACK
-        )
+        ) {
+            override fun equals(other: Any?): Boolean {
+                if (this === other) return true
+                if (javaClass != other?.javaClass) return false
+
+                other as FilterSpecs
+
+                if (id != other.id) return false
+                if (density != other.density) return false
+                if (!densityArray.contentEquals(other.densityArray)) return false
+                if (fgColor != other.fgColor) return false
+                if (fgColorType != other.fgColorType) return false
+                if (bgColor != other.bgColor) return false
+
+                return true
+            }
+
+            override fun hashCode(): Int {
+                var result = id?.hashCode() ?: 0
+                result = 31 * result + density.hashCode()
+                result = 31 * result + densityArray.contentHashCode()
+                result = 31 * result + fgColor
+                result = 31 * result + fgColorType
+                result = 31 * result + bgColor
+                return result
+            }
+        }
 
         fun getFilterByID(id: Int): AsciiFilters = when (id) {
             BlackOnWhite.id -> {
@@ -54,9 +82,6 @@ sealed class AsciiFilters {
             }
         }
 
-        val listOfFilters: ArrayList<AsciiFilters> =
-            arrayListOf(WhiteOnBlack, BlackOnWhite, OriginalColor, ANSI)
-
     }
 
     object WhiteOnBlack : AsciiFilters() {
@@ -72,6 +97,8 @@ sealed class AsciiFilters {
         override val fgColor = Color.WHITE
 
         override val bgColor = Color.BLACK
+        override val fgColorType: Int
+            get() = COLOR_TYPE_NONE
     }
 
     object BlackOnWhite : AsciiFilters() {
@@ -88,6 +115,9 @@ sealed class AsciiFilters {
         override val fgColor = Color.BLACK
 
         override val bgColor = Color.WHITE
+        override val fgColorType: Int
+            get() = COLOR_TYPE_NONE
+
     }
 
     object OriginalColor : AsciiFilters() {
@@ -104,6 +134,9 @@ sealed class AsciiFilters {
         override val fgColor = Color.WHITE
 
         override val bgColor = Color.BLACK
+        override val fgColorType: Int
+            get() = COLOR_TYPE_ORIGINAL
+
     }
 
     object ANSI : AsciiFilters() {
@@ -119,6 +152,10 @@ sealed class AsciiFilters {
         override val fgColor = Color.WHITE
 
         override val bgColor = Color.BLACK
+
+        override val fgColorType: Int
+            get() = COLOR_TYPE_ANSI
+
     }
 
     object Custom : AsciiFilters() {
@@ -140,6 +177,10 @@ sealed class AsciiFilters {
         override val fgColor = specs.fgColor
 
         override val bgColor = specs.bgColor
+
+        override val fgColorType: Int
+            get() = specs.fgColorType
+
     }
 
 }

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import javax.inject.Inject
 
 class Repository
@@ -30,9 +31,16 @@ class Repository
     suspend fun getCurrentLensRaw() =
         dataStore.getValueFromPreferencesStore(LENS_VALUE) ?: DEFAULT_BACK_CAMERA
 
-    suspend fun addCustomFilter(filterSpecsTable: FilterSpecsTable) {
+    suspend fun addFilter(filterSpecsTable: FilterSpecsTable) {
         withContext(Dispatchers.IO){
+            Timber.d("Add filter data $filterSpecsTable")
             filterSpecsDao.addFilter(filterSpecsTable)
+        }
+    }
+
+    suspend fun addFilters(filterSpecsTable: List<FilterSpecsTable>) {
+        withContext(Dispatchers.IO){
+            filterSpecsDao.addFilters(filterSpecsTable)
         }
     }
 

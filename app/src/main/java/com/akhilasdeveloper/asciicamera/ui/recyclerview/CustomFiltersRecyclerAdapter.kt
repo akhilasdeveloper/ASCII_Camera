@@ -5,20 +5,22 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.*
 import com.akhilasdeveloper.asciicamera.databinding.CustomFilterListItemBinding
-import com.akhilasdeveloper.asciicamera.databinding.FilterListItemBinding
-import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
-import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
-import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Custom
+import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters.Companion.FilterSpecs
+import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiGenerator
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 class CustomFiltersRecyclerAdapter(
-        private val interaction: RecyclerCustomFiltersClickListener? = null,
-        private val sampleBitmap: Bitmap,
+    private val interaction: RecyclerCustomFiltersClickListener? = null,
+    private val sampleBitmap: Bitmap,
+    private val asciiGenerator: AsciiGenerator,
+    private val scope: CoroutineScope,
     ) :
         RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val bindingPhoto = CustomFilterListItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-            return PhotoViewHolder(bindingPhoto, interaction, sampleBitmap)
+            return PhotoViewHolder(bindingPhoto, interaction, sampleBitmap, asciiGenerator, scope)
         }
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
@@ -34,20 +36,34 @@ class CustomFiltersRecyclerAdapter(
         class PhotoViewHolder(
             private val binding: CustomFilterListItemBinding,
             private val interaction: RecyclerCustomFiltersClickListener?,
-            private val sampleBitmap: Bitmap
+            private val sampleBitmap: Bitmap,
+            private val asciiGenerator: AsciiGenerator,
+            private val scope: CoroutineScope
         ) :
             RecyclerView.ViewHolder(binding.root) {
 
             fun bindPhoto(photo: FilterSpecs, position: Int) {
+
+                asciiGenerator.fgColor = photo.fgColor
+                asciiGenerator.bgColor = photo.bgColor
+                asciiGenerator.density = photo.density
+                asciiGenerator._densityIntArray = photo.densityArray
+                asciiGenerator.colorType = photo.fgColorType
+
                 /*binding.filterItemImage.filter = Custom(photo)
                 binding.filterItemImage.generateTextViewFromBitmap(bitmap = sampleBitmap)*/
-                /*binding.root.setOnClickListener {
+
+                scope.launch {
+                    binding.filterItemImage.setImageBitmap(asciiGenerator.imageBitmapToTextBitmap(sampleBitmap))
+                }
+
+                binding.root.setOnClickListener {
                     interaction?.onCustomItemClicked(photo)
                 }
 
                 binding.deleteButton.setOnClickListener {
                     interaction?.onCustomDeleteClicked(photo)
-                }*/
+                }
             }
 
         }

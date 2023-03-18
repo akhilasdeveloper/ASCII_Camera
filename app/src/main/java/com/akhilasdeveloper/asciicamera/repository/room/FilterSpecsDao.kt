@@ -14,6 +14,9 @@ interface FilterSpecsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun addFilter(filterSpecs:FilterSpecsTable)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun addFilters(filterSpecs:List<FilterSpecsTable>)
+
     @Delete
     fun deleteFilter(filterSpecs:FilterSpecsTable)
 
