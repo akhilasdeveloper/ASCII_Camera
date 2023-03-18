@@ -6,7 +6,6 @@ import android.text.TextPaint
 import androidx.camera.core.ImageProxy
 import androidx.core.graphics.ColorUtils
 import com.akhilasdeveloper.asciicamera.util.Constants.DEFAULT_CUSTOM_CHARS
-import com.akhilasdeveloper.asciicamera.util.RuntimeCalculator
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters.Companion.ANSI_RATIO
 import com.akhilasdeveloper.asciicamera.util.getAllPixelsBytes
 import com.akhilasdeveloper.asciicamera.util.map
@@ -76,11 +75,7 @@ class AsciiGenerator() {
 
         isCapturedState = true
 
-        val lastRawBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        lastRawBitmap.copyPixelsFromBuffer(ByteBuffer.wrap(croppedArray))
-        this.lastRawBitmap = lastRawBitmap
-
-        mListener?.onCapture(lastTextBitmap, lastRawBitmap)
+        mListener?.onCapture(lastTextBitmap)
     }
 
     fun setDispatcher(dispatcher: CoroutineDispatcher) {
@@ -577,7 +572,7 @@ class AsciiGenerator() {
 
     interface OnGeneratedListener {
         fun onContinue()
-        fun onCapture(bitmap: Bitmap?, lastRawBitmap: Bitmap)
+        fun onCapture(bitmap: Bitmap?)
     }
 
     private fun Bitmap.getAllPixelsByteArray(): ByteArray {

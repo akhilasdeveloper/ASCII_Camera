@@ -36,7 +36,6 @@ import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerCustomFiltersCli
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerFiltersClickListener
 import com.akhilasdeveloper.asciicamera.util.*
 import com.akhilasdeveloper.asciicamera.util.Constants.BITMAP_PATH
-import com.akhilasdeveloper.asciicamera.util.Constants.DEFAULT_CUSTOM_CHARS
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters
 import com.flask.colorpicker.ColorPickerView
@@ -122,10 +121,6 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             setBitmapToImage(it)
         }
 
-        viewModel.revertPanelButtonState.observe(lifecycleScope) {
-            if (it)
-                revertPanelButtons()
-        }
         viewModel.startCameraState.observe(lifecycleScope) {cameraSelector->
             startCamera(cameraSelector)
         }
@@ -133,13 +128,20 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             if (it)
                 pauseCamera()
         }
-        viewModel.changePanelButtonsToConfirmState.observe(lifecycleScope) {
+        viewModel.changePanelButtonToConfirmState.observe(lifecycleScope){
             if (it)
                 changePanelButtonsToConfirm()
+            else
+                revertPanelButtons()
         }
         viewModel.showEditDensityPopupState.observe(lifecycleScope) {
             if (it)
                 editDensityPopup()
+        }
+
+        viewModel.filtersCount.observe(lifecycleScope){
+            if (it<4)
+                Toast.makeText(this, "Filters are not generated", Toast.LENGTH_SHORT).show()
         }
 
     }
@@ -288,6 +290,16 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         filtersBottomSheetBehavior = BottomSheetBehavior.from(binding.bottomSheet)
         filtersBottomSheetBehavior.isGestureInsetBottomIgnored = true
         filtersBottomSheetBehavior.addBottomSheetCallback(bottomSheetCallBack)
+
+        binding.layoutFilterBottomSheet.filterItems.layoutManager = LinearLayoutManager(
+            this@MainActivity,
+            LinearLayoutManager.HORIZONTAL, false
+        )
+
+        binding.layoutFilterBottomSheet.customFilterItems.layoutManager = LinearLayoutManager(
+            this@MainActivity,
+            LinearLayoutManager.HORIZONTAL, false
+        )
     }
 
     private fun onColorSelectButtonClicked(it: View, onResult: (color: Int) -> Unit) {
@@ -300,7 +312,6 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             onResult(currColor)
         })
     }
-
 
     private fun launchPhotoPicker() {
         val galleryIntent = Intent(Intent.ACTION_PICK)
@@ -403,15 +414,6 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         }
     }
 
-    private fun getDensityFromInput(): String =
-        binding.layoutAddFilterBottomSheet.charactersInput.text?.let {
-            if (it.isNotEmpty())
-                it.toString()
-            else
-                null
-        } ?: DEFAULT_CUSTOM_CHARS
-
-
     private fun fetchColor(
         currentColor: Int,
         onColorSelect: (color: Int) -> Unit,
@@ -439,10 +441,12 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     }
 
     private fun init() {
+
         initPermission()
+
         viewModel = ViewModelProvider(this@MainActivity)[MainViewModel::class.java]
+
         cameraExecutor = Executors.newSingleThreadExecutor()
-        cameraProcessProvider = ProcessCameraProvider.getInstance(this)
 
         viewModel.asciiGeneratorChangeFilter(AsciiFilters.WhiteOnBlack)
         viewModel.setAsciiGeneratorDispatcher(cameraExecutor.asCoroutineDispatcher())
@@ -456,17 +460,6 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
         viewModel.getLens()
 
-        binding.layoutFilterBottomSheet.filterItems.layoutManager = LinearLayoutManager(
-            this@MainActivity,
-            LinearLayoutManager.HORIZONTAL, false
-        )
-
-        binding.layoutFilterBottomSheet.customFilterItems.layoutManager = LinearLayoutManager(
-            this@MainActivity,
-            LinearLayoutManager.HORIZONTAL, false
-        )
-
-
         getSampleBitmap()?.let { bitmap ->
 
             customFiltersRecyclerAdapter = CustomFiltersRecyclerAdapter(this, bitmap)
@@ -478,6 +471,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             viewModel.getCustomFilters()
         }
 
+        viewModel.getFiltersCount()
     }
 
     private fun getSampleBitmap(): Bitmap? {
@@ -493,7 +487,7 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
             str = assetManager.open(filePath!!)
             bitmap = BitmapFactory.decodeStream(str)
         } catch (e: IOException) {
-            // handle exception
+            Timber.e("Unable to load image asset")
         }
         return bitmap
     }
@@ -505,12 +499,10 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
                 cameraProcessProvider.addListener({
 
                     try {
-                        cameraProvider = cameraProcessProvider.get()
 
-                        val analysis = buildImageAnalysisUseCase()
+                        val analysis = viewModel.buildImageAnalysisUseCase(cameraExecutor)
 
                         cameraProvider.unbindAll()
-
                         cameraProvider.bindToLifecycle(this, cameraSelector, analysis)
 
                     } catch (exc: Exception) {
@@ -525,7 +517,6 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     }
 
-
     private fun setBitmapToImage(bitmap: Bitmap?) {
         binding.image.setImageBitmap(bitmap)
     }
@@ -534,24 +525,16 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         cameraProvider.unbindAll()
     }
 
-    private fun buildImageAnalysisUseCase(): ImageAnalysis {
-        return imageAnalysis.apply {
-            setAnalyzer(cameraExecutor) { imageProxy ->
-                viewModel.generateTextView(imageProxy)
-            }
-        }
-    }
-
     private fun hasFrontCamera(): Boolean = this.packageManager.hasSystemFeature(
         PackageManager.FEATURE_CAMERA_FRONT
     )
 
     override fun onItemClicked(textBitmapFilter: TextBitmapFilter) {
-//        textCanvasView.filter = textBitmapFilter
+
     }
 
     override fun onCustomItemClicked(filterSpecs: FilterSpecs) {
-//        textCanvasView.filter = TextBitmapFilter.Custom(filterSpecs)
+
     }
 
     override fun onCustomDeleteClicked(filterSpecs: FilterSpecs) {

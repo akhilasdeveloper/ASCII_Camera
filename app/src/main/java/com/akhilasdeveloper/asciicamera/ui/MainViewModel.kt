@@ -1,19 +1,15 @@
 package com.akhilasdeveloper.asciicamera.ui
 
 import android.graphics.Bitmap
-import android.graphics.drawable.ColorDrawable
 import android.net.Uri
-import android.view.View
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
-import com.akhilasdeveloper.asciicamera.R
 import com.akhilasdeveloper.asciicamera.repository.Repository
 import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsTable
 import com.akhilasdeveloper.asciicamera.util.Constants
-import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter
 import com.akhilasdeveloper.asciicamera.util.TextBitmapFilter.Companion.FilterSpecs
 import com.akhilasdeveloper.asciicamera.util.Utilities
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters
@@ -24,17 +20,19 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val repository: Repository,
     private val asciiGenerator: AsciiGenerator,
+    private val imageAnalysis: ImageAnalysis,
     private val utilities: Utilities
 ) : ViewModel() {
 
     private var capturedTextBitmap: Bitmap? = null
-    private var capturedRawBitmap: Bitmap? = null
     private var cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
     init {
@@ -44,13 +42,15 @@ class MainViewModel @Inject constructor(
                 capturedTextBitmap = null
                 revertPanelButtons()
                 startCamera()
+                Timber.d("Continue")
             }
 
-            override fun onCapture(bitmap: Bitmap?, lastRawBitmap: Bitmap) {
+            override fun onCapture(bitmap: Bitmap?) {
                 capturedTextBitmap = bitmap
-                capturedRawBitmap = lastRawBitmap
+                setBitmapToImage(bitmap)
                 changePanelButtonsToConfirm()
                 pauseCamera()
+                Timber.d("Capture")
             }
         })
     }
@@ -63,7 +63,7 @@ class MainViewModel @Inject constructor(
 
     private fun changePanelButtonsToConfirm() {
         viewModelScope.launch {
-            _changePanelButtonsToConfirmState.emit(true)
+            _changePanelButtonToConfirmState.emit(true)
         }
     }
 
@@ -75,7 +75,7 @@ class MainViewModel @Inject constructor(
 
     private fun revertPanelButtons() {
         viewModelScope.launch {
-            _revertPanelButtonState.emit(true)
+            _changePanelButtonToConfirmState.emit(false)
         }
     }
 
@@ -94,20 +94,17 @@ class MainViewModel @Inject constructor(
     private val _showEditDensityPopupState = MutableStateFlow<Boolean>(false)
     val showEditDensityPopupState: StateFlow<Boolean> = _showEditDensityPopupState
 
+    private val _changePanelButtonToConfirmState = MutableStateFlow<Boolean>(false)
+    val changePanelButtonToConfirmState: StateFlow<Boolean> = _changePanelButtonToConfirmState
+
     private val _setBitmapToImageState = MutableStateFlow<Bitmap?>(null)
     val setBitmapToImageState: StateFlow<Bitmap?> = _setBitmapToImageState
 
-    private val _revertPanelButtonState = MutableStateFlow(false)
-    val revertPanelButtonState: StateFlow<Boolean> = _revertPanelButtonState
+    private val _startCameraState = MutableSharedFlow<CameraSelector>()
+    val startCameraState: SharedFlow<CameraSelector> = _startCameraState
 
-    private val _changePanelButtonsToConfirmState = MutableStateFlow(false)
-    val changePanelButtonsToConfirmState: StateFlow<Boolean> = _changePanelButtonsToConfirmState
-
-    private val _startCameraState = MutableStateFlow(cameraSelector)
-    val startCameraState: StateFlow<CameraSelector> = _startCameraState
-
-    private val _pauseCameraState = MutableStateFlow(false)
-    val pauseCameraState: StateFlow<Boolean> = _pauseCameraState
+    private val _pauseCameraState = MutableSharedFlow<Boolean>()
+    val pauseCameraState: SharedFlow<Boolean> = _pauseCameraState
 
     private val _launchPhotoPickerState = MutableStateFlow(false)
     val launchPhotoPickerState: StateFlow<Boolean> = _launchPhotoPickerState
@@ -330,6 +327,14 @@ class MainViewModel @Inject constructor(
 
     fun setCameraSelector(defaultFrontCamera: CameraSelector) {
         cameraSelector = defaultFrontCamera
+    }
+
+    fun buildImageAnalysisUseCase(cameraExecutor: Executor): ImageAnalysis {
+        return imageAnalysis.apply {
+            setAnalyzer(cameraExecutor) { imageProxy ->
+                generateTextView(imageProxy)
+            }
+        }
     }
 
 }
