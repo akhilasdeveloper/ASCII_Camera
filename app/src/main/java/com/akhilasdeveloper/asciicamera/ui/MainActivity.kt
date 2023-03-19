@@ -338,6 +338,14 @@ class MainActivity : AppCompatActivity(),
             viewModel.asciiGeneratorCapture()
         }
 
+        binding.infoButton.setOnClickListener {
+            android.app.AlertDialog.Builder(this)
+                .setTitle("About")
+                .setMessage("Developer Contact: akhilasdeveloper@gmail.com")
+                .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+                .create().show()
+        }
+
         val bottomSheetCallBack = object : BottomSheetBehavior.BottomSheetCallback() {
             override fun onStateChanged(bottomSheet: View, newState: Int) {
                 if (newState == BottomSheetBehavior.STATE_HIDDEN)

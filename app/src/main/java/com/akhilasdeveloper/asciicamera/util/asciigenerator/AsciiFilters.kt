@@ -17,7 +17,7 @@ sealed class AsciiFilters {
         const val COLOR_TYPE_NONE = -1
         const val COLOR_TYPE_ANSI = -2
         const val COLOR_TYPE_ORIGINAL = -3
-        const val ANSI_RATIO = 7f/8
+        const val ANSI_RATIO = .88f
 
         data class FilterSpecs(
             var id: Long? = null,
@@ -120,7 +120,7 @@ sealed class AsciiFilters {
             get() = "ANSII"
 
         override val density: String
-            get() = "@BOo."
+            get() = "Ñ@#"
 
         override val fgColor = Color.WHITE
 

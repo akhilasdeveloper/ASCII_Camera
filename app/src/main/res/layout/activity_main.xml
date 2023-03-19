@@ -59,6 +59,16 @@
                 android:layout_marginStart="42dp"
                 android:background="@drawable/cam_flip_button_state"/>
 
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/info_button"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="end|center_vertical"
+                android:src="@drawable/baseline_info_24"
+                android:tint="@color/panel_fg_color"
+                android:layout_marginEnd="42dp"
+                android:background="@drawable/cam_flip_button_state"/>
+
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
     </LinearLayout>
 
