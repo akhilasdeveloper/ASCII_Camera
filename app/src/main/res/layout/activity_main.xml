@@ -62,6 +62,13 @@
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
     </LinearLayout>
 
+    <ProgressBar
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:id="@+id/progress"
+        android:visibility="gone"/>
+
 
     <androidx.core.widget.NestedScrollView
         android:id="@+id/bottom_sheet"

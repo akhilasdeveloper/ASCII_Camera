@@ -24,6 +24,7 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -161,6 +162,10 @@ class MainActivity : AppCompatActivity(),
             id?.let {
                 viewModel.getFilterById(id)
             }
+        }
+
+        viewModel.progressState.observe(lifecycleScope){
+            binding.progress.isVisible = it
         }
 
     }

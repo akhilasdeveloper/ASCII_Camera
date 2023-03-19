@@ -82,10 +82,22 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    suspend fun progressStart() {
+        _progressState.emit(true)
+    }
+
+    suspend fun progressEnd() {
+        _progressState.emit(false)
+    }
+
     fun convertImageFromGallery(imageUri: Uri) {
-        val bitmap = utilities.bitmapFromUri(imageUri)
-        val mutableBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-        processBitmap(mutableBitmap)
+        viewModelScope.launch {
+            progressStart()
+            val bitmap = utilities.bitmapFromUri(imageUri)
+            val mutableBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+            processBitmap(mutableBitmap)
+            progressEnd()
+        }
     }
 
     private val _shareAsImageState = MutableSharedFlow<Uri?>()
@@ -113,6 +125,9 @@ class MainViewModel @Inject constructor(
 
     private val _currentFilterIdState = MutableStateFlow<Int?>(null)
     val currentFilterIdState: StateFlow<Int?> = _currentFilterIdState
+
+    private val _progressState = MutableStateFlow<Boolean>(false)
+    val progressState: StateFlow<Boolean> = _progressState
 
     private val _setBitmapToImageState = MutableStateFlow<Bitmap?>(null)
     val setBitmapToImageState: StateFlow<Bitmap?> = _setBitmapToImageState
@@ -178,10 +193,12 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun shareAsImage(){
+    fun shareAsImage() {
         viewModelScope.launch {
+            progressStart()
             val imageUri: Uri? = utilities.toImageURI(capturedTextBitmap)
             _shareAsImageState.emit(imageUri)
+            progressEnd()
         }
     }
 
@@ -248,13 +265,11 @@ class MainViewModel @Inject constructor(
         asciiGenerator.setDispatcher(dispatcher)
     }
 
-    private fun processBitmap(mutableBitmap: Bitmap) {
+    private suspend fun processBitmap(mutableBitmap: Bitmap) {
         pauseCamera()
-        viewModelScope.launch {
-            val result = asciiGenerator.imageBitmapToTextBitmap(mutableBitmap)
-            setBitmapToImage(result)
-            asciiGenerator.capture()
-        }
+        val result = asciiGenerator.imageBitmapToTextBitmap(mutableBitmap)
+        setBitmapToImage(result)
+        asciiGenerator.capture()
     }
 
     private fun setBitmapToImage(result: Bitmap?) {
@@ -266,7 +281,11 @@ class MainViewModel @Inject constructor(
     private fun generateTextView(imageProxy: ImageProxy) {
         viewModelScope.launch {
             val flip = cameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA
-            val bitmap = asciiGenerator.imageProxyToTextBitmap(imageProxy = imageProxy, rotate90 = true, flipHorizontal = flip)
+            val bitmap = asciiGenerator.imageProxyToTextBitmap(
+                imageProxy = imageProxy,
+                rotate90 = true,
+                flipHorizontal = flip
+            )
             setBitmapToImage(bitmap)
         }
     }
@@ -344,6 +363,7 @@ class MainViewModel @Inject constructor(
 
     fun onApplyDensity(charEditText: TextInputEditText) {
         viewModelScope.launch {
+            progressStart()
             val chars = utilities.getDensityCharsFromEditText(charEditText)
 
             val array = utilities.generateDensityArray(
@@ -357,6 +377,7 @@ class MainViewModel @Inject constructor(
             )
 
             populateCurrentFilterDetailsToAddFilterBottomSheet()
+            progressEnd()
         }
     }
 
@@ -409,6 +430,7 @@ class MainViewModel @Inject constructor(
     fun saveCurrentFilter(name: String) {
         setAsciiGeneratorValues(name = name)
         viewModelScope.launch {
+            progressStart()
             repository.addFilter(
                 FilterSpecsTable(
                     fgColor = asciiGenerator.fgColor,
@@ -419,6 +441,7 @@ class MainViewModel @Inject constructor(
                     name = asciiGenerator.name
                 )
             )
+            progressEnd()
         }
     }
 
@@ -432,19 +455,23 @@ class MainViewModel @Inject constructor(
 
     fun shareAsText() {
         viewModelScope.launch {
+            progressStart()
             asciiGenerator.generateTextString()?.let {
                 val uri = utilities.stringToUri(it, "share.txt")
                 _shareAsTextState.emit(uri)
             }
+            progressEnd()
         }
     }
 
     fun shareAsHtml() {
         viewModelScope.launch {
+            progressStart()
             asciiGenerator.generateHtmlString()?.let {
                 val uri = utilities.stringToUri(it, "share.html")
                 _shareAsHtmlState.emit(uri)
             }
+            progressEnd()
         }
     }
 
