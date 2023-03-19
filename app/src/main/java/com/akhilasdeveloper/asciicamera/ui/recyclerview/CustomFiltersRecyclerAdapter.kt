@@ -13,14 +13,13 @@ import kotlinx.coroutines.launch
 class CustomFiltersRecyclerAdapter(
     private val interaction: RecyclerCustomFiltersClickListener? = null,
     private val sampleBitmap: Bitmap,
-    private val asciiGenerator: AsciiGenerator,
     private val scope: CoroutineScope,
     ) :
         RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val bindingPhoto = CustomFilterListItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-            return PhotoViewHolder(bindingPhoto, interaction, sampleBitmap, asciiGenerator, scope)
+            return PhotoViewHolder(bindingPhoto, interaction, sampleBitmap, scope)
         }
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
@@ -37,7 +36,6 @@ class CustomFiltersRecyclerAdapter(
             private val binding: CustomFilterListItemBinding,
             private val interaction: RecyclerCustomFiltersClickListener?,
             private val sampleBitmap: Bitmap,
-            private val asciiGenerator: AsciiGenerator,
             private val scope: CoroutineScope
         ) :
             RecyclerView.ViewHolder(binding.root) {
@@ -49,11 +47,8 @@ class CustomFiltersRecyclerAdapter(
                 asciiGenerator.fgColor = photo.fgColor
                 asciiGenerator.bgColor = photo.bgColor
                 asciiGenerator.density = photo.density
-                asciiGenerator._densityIntArray = photo.densityArray
+                asciiGenerator.densityByteArray = photo.densityArray
                 asciiGenerator.colorType = photo.fgColorType
-
-                /*binding.filterItemImage.filter = Custom(photo)
-                binding.filterItemImage.generateTextViewFromBitmap(bitmap = sampleBitmap)*/
 
                 scope.launch {
                     binding.filterItemImage.setImageBitmap(asciiGenerator.imageBitmapToTextBitmap(sampleBitmap))

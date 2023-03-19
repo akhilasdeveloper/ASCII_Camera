@@ -90,7 +90,14 @@ class Utilities(private val context: Context, private val textGraphicsSorter: Te
         val source = ImageDecoder.createSource(context.contentResolver, imageUri)
         ImageDecoder.decodeBitmap(source)
     }
-    suspend fun generateDensityArray(density: String, textSize: Float): ByteArray {
+
+    /**
+     * This function converts string density into byte array. First it draws all chars into a vertical canvas. It will be white on black background.
+     * Then it can be converted into a byte array. byte 1 representing white pixel and byte 0 representing black.
+     * Using this template we can generate chars in efficient way but sacrifices char quality.
+     */
+
+    fun generateDensityArray(density: String, textSize: Float): ByteArray {
         val canvas = Canvas()
         val textSizeInt = textSize.toInt()
         val bitmap = Bitmap.createBitmap(

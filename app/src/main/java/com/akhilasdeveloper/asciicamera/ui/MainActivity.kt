@@ -53,7 +53,7 @@ import javax.inject.Inject
 
 
 @AndroidEntryPoint
-class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
+class MainActivity : AppCompatActivity(),
     RecyclerCustomFiltersClickListener {
 
     private var _binding: ActivityMainBinding? = null
@@ -98,10 +98,6 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
     private fun subscribeToObservers() {
 
-        viewModel.inverseCanvasState.observe(lifecycleScope) {
-
-        }
-
         viewModel.customFiltersListState.observe(lifecycleScope) {
             customFiltersRecyclerAdapter.submitList(it)
         }
@@ -136,12 +132,6 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
         }
         viewModel.showEditDensityPopupState.observe(lifecycleScope) {
             editDensityPopup(it)
-        }
-
-        viewModel.filtersCount.observe(lifecycleScope) {
-            Toast.makeText(this, it.toString(), Toast.LENGTH_SHORT).show()
-            if (it < 4)
-                viewModel.generateFilters()
         }
 
         viewModel.populateCurrentFilterDetailsToAddFilterBottomSheetState.observe(lifecycleScope) {
@@ -471,8 +461,8 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        viewModel.asciiGeneratorChangeFilter(AsciiFilters.WhiteOnBlack)
         viewModel.setAsciiGeneratorDispatcher(cameraExecutor.asCoroutineDispatcher())
+        viewModel.getLens()
 
         if (!hasFrontCamera()) {
             binding.flipCameraButton.visibility = View.GONE
@@ -481,18 +471,15 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
 
         }
 
-        viewModel.getLens()
-
         getSampleBitmap()?.let { bitmap ->
 
             customFiltersRecyclerAdapter =
-                CustomFiltersRecyclerAdapter(this, bitmap, AsciiGenerator(), lifecycleScope)
+                CustomFiltersRecyclerAdapter(this, bitmap, lifecycleScope)
             binding.layoutFilterBottomSheet.filterItems.adapter = customFiltersRecyclerAdapter
 
             viewModel.getCustomFilters()
         }
 
-        viewModel.getFiltersCount()
     }
 
     private fun getSampleBitmap(): Bitmap? {
@@ -548,10 +535,6 @@ class MainActivity : AppCompatActivity(), RecyclerFiltersClickListener,
     private fun hasFrontCamera(): Boolean = this.packageManager.hasSystemFeature(
         PackageManager.FEATURE_CAMERA_FRONT
     )
-
-    override fun onItemClicked(textBitmapFilter: TextBitmapFilter) {
-
-    }
 
     override fun onCustomItemClicked(filterSpecs: FilterSpecs) {
         viewModel.setAsciiGeneratorValues(

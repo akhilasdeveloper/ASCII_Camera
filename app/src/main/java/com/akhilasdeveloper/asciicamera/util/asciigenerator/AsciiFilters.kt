@@ -19,13 +19,6 @@ sealed class AsciiFilters {
         const val COLOR_TYPE_ORIGINAL = -3
         const val ANSI_RATIO = 7f/8
 
-        data class CharData(
-            val char: Char,
-            val charIntArray: List<Int> = listOf(),
-            val colorFg: Int,
-            val colorBg: Int
-        )
-
         data class FilterSpecs(
             var id: Long? = null,
             var density: String = Constants.DEFAULT_CUSTOM_CHARS,
@@ -58,27 +51,6 @@ sealed class AsciiFilters {
                 result = 31 * result + fgColorType
                 result = 31 * result + bgColor
                 return result
-            }
-        }
-
-        fun getFilterByID(id: Int): AsciiFilters = when (id) {
-            BlackOnWhite.id -> {
-                BlackOnWhite
-            }
-            WhiteOnBlack.id -> {
-                WhiteOnBlack
-            }
-            OriginalColor.id -> {
-                OriginalColor
-            }
-            ANSI.id -> {
-                ANSI
-            }
-            Custom.id -> {
-                Custom
-            }
-            else -> {
-                BlackOnWhite
             }
         }
 
@@ -155,31 +127,6 @@ sealed class AsciiFilters {
 
         override val fgColorType: Int
             get() = COLOR_TYPE_ANSI
-
-    }
-
-    object Custom : AsciiFilters() {
-
-        var specs: FilterSpecs = FilterSpecs()
-        operator fun invoke(filterSpecs: FilterSpecs = FilterSpecs()): AsciiFilters {
-            specs = filterSpecs
-            return this
-        }
-
-        override val id: Int
-            get() = -5
-        override val name: String
-            get() = "Custom"
-
-        override val density: String
-            get() = specs.density
-
-        override val fgColor = specs.fgColor
-
-        override val bgColor = specs.bgColor
-
-        override val fgColorType: Int
-            get() = specs.fgColorType
 
     }
 

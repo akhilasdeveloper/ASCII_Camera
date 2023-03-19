@@ -86,21 +86,17 @@ class MainViewModel @Inject constructor(
         processBitmap(mutableBitmap)
     }
 
-    private val _lensState = MutableStateFlow(CameraSelector.DEFAULT_BACK_CAMERA)
-    val lensState: StateFlow<CameraSelector> = _lensState
-
     private val _shareAsImageState = MutableStateFlow<Uri?>(null)
     val shareAsImageState: StateFlow<Uri?> = _shareAsImageState
 
-    private val _populateCurrentFilterDetailsToAddFilterBottomSheetState =
-        MutableStateFlow<FilterSpecs>(FilterSpecs())
+    private val _populateCurrentFilterDetailsToAddFilterBottomSheetState = MutableStateFlow(FilterSpecs())
     val populateCurrentFilterDetailsToAddFilterBottomSheetState: StateFlow<FilterSpecs> =
         _populateCurrentFilterDetailsToAddFilterBottomSheetState
 
     private val _showEditDensityPopupState = MutableSharedFlow<String>()
     val showEditDensityPopupState: SharedFlow<String> = _showEditDensityPopupState
 
-    private val _changePanelButtonToConfirmState = MutableStateFlow<Boolean>(false)
+    private val _changePanelButtonToConfirmState = MutableStateFlow(false)
     val changePanelButtonToConfirmState: StateFlow<Boolean> = _changePanelButtonToConfirmState
 
     private val _setBitmapToImageState = MutableStateFlow<Bitmap?>(null)
@@ -115,13 +111,10 @@ class MainViewModel @Inject constructor(
     private val _launchPhotoPickerState = MutableStateFlow(false)
     val launchPhotoPickerState: StateFlow<Boolean> = _launchPhotoPickerState
 
-    private val _inverseCanvasState = MutableStateFlow(false)
-    val inverseCanvasState: StateFlow<Boolean> = _inverseCanvasState
-
     private val _customFiltersListState = MutableStateFlow<List<FilterSpecs>>(arrayListOf())
     val customFiltersListState: StateFlow<List<FilterSpecs>> = _customFiltersListState
 
-    private val _filtersCount = MutableStateFlow<Int>(0)
+    private val _filtersCount = MutableStateFlow(0)
     val filtersCount: StateFlow<Int> = _filtersCount
 
     private suspend fun setLens(lens: CameraSelector) {
@@ -129,19 +122,16 @@ class MainViewModel @Inject constructor(
     }
 
     fun getLens() {
-        repository.getCurrentLens().onEach { lens ->
-            isCanvasNeedsToBeInverse(lens)
-            cameraSelector = lens.toCameraSelector()
-            startCamera()
-        }.launchIn(viewModelScope)
-    }
-
-    fun bottomSheetAddCustomFilterState(filterSpecs: FilterSpecs) {
-        setAsciiGeneratorValues(
-            fgColor = filterSpecs.fgColor,
-            bgColor = filterSpecs.bgColor,
-            colorType = filterSpecs.fgColorType
-        )
+        viewModelScope.launch {
+            if (getFiltersCountRaw()<=0){
+                generateFilters(true)
+            }else{
+                repository.getCurrentLens().onEach { lens ->
+                    cameraSelector = lens.toCameraSelector()
+                    startCamera()
+                }.launchIn(viewModelScope)
+            }
+        }
     }
 
     private fun toggleCamera() {
@@ -173,10 +163,6 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private fun isCanvasNeedsToBeInverse(lens: Int) {
-        _inverseCanvasState.value = lens == Constants.DEFAULT_FRONT_CAMERA
-    }
-
     private fun Int.toCameraSelector(): CameraSelector =
         if (this == Constants.DEFAULT_BACK_CAMERA)
             CameraSelector.DEFAULT_BACK_CAMERA
@@ -197,15 +183,12 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun getFiltersCount() {
-        viewModelScope.launch {
-            _filtersCount.value = repository.getFiltersCount()
-        }
-    }
+    private suspend fun getFiltersCountRaw() = repository.getFiltersCount()
 
-    fun addCustomFilters(filterSpecs: FilterSpecs) {
+    private fun validateFilterCountAndGenerate(){
         viewModelScope.launch {
-//            repository.addCustomFilter(filterSpecsTableFromData(filterSpecs))
+            if (getFiltersCountRaw() <= 0)
+                generateFilters()
         }
     }
 
@@ -221,6 +204,7 @@ class MainViewModel @Inject constructor(
                     densityArray = filterSpecs.densityArray
                 )
             )
+            validateFilterCountAndGenerate()
         }
     }
 
@@ -231,15 +215,11 @@ class MainViewModel @Inject constructor(
             toggleCamera()
     }
 
-    fun asciiGeneratorChangeFilter(filter: AsciiFilters) {
-        asciiGenerator.changeFilter(filter)
-    }
-
     fun setAsciiGeneratorDispatcher(dispatcher: CoroutineDispatcher) {
         asciiGenerator.setDispatcher(dispatcher)
     }
 
-    fun processBitmap(mutableBitmap: Bitmap) {
+    private fun processBitmap(mutableBitmap: Bitmap) {
         pauseCamera()
         viewModelScope.launch {
             val result = asciiGenerator.imageBitmapToTextBitmap(mutableBitmap)
@@ -254,7 +234,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun generateTextView(imageProxy: ImageProxy) {
+    private fun generateTextView(imageProxy: ImageProxy) {
         viewModelScope.launch {
             val bitmap = asciiGenerator.imageProxyToTextBitmap(imageProxy)
             setBitmapToImage(bitmap)
@@ -268,14 +248,6 @@ class MainViewModel @Inject constructor(
         bgColor = filterSpecsTable.bgColor,
         fgColorType = filterSpecsTable.fgColorType,
     )
-
-    /*private fun filterSpecsTableFromData(filterSpecs: FilterSpecs): FilterSpecsTable = FilterSpecsTable(
-        id = filterSpecs.id,
-        density = filterSpecs.density,
-        fgColor = filterSpecs.fgColor,
-        bgColor = filterSpecs.bgColor,
-        fgColorType = filterSpecs.fgColorType,
-    )*/
 
     fun asciiGeneratorCapture() {
         asciiGenerator.capture()
@@ -301,7 +273,7 @@ class MainViewModel @Inject constructor(
             asciiGenerator.density = it
         }
         densityByteArray?.let {
-            asciiGenerator._densityIntArray = it
+            asciiGenerator.densityByteArray = it
         }
 
         viewModelScope.launch {
@@ -337,6 +309,8 @@ class MainViewModel @Inject constructor(
                 density = chars,
                 densityByteArray = array
             )
+
+            populateCurrentFilterDetailsToAddFilterBottomSheet()
         }
     }
 
@@ -352,7 +326,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun generateFilters() {
+    private fun generateFilters(isInit:Boolean = false) {
         viewModelScope.launch {
             val filters = filterGenerator.generateFilters().map {
                 FilterSpecsTable(
@@ -367,6 +341,8 @@ class MainViewModel @Inject constructor(
             filters.forEach {
                 repository.addFilter(it)
             }
+            if (isInit)
+                getLens()
         }
     }
 
@@ -377,7 +353,7 @@ class MainViewModel @Inject constructor(
                     fgColor = asciiGenerator.fgColor,
                     bgColor = asciiGenerator.bgColor,
                     density = asciiGenerator.density,
-                    densityArray = asciiGenerator._densityIntArray,
+                    densityArray = asciiGenerator.densityByteArray,
                     fgColorType = asciiGenerator.colorType
                 )
             )
@@ -391,7 +367,7 @@ class MainViewModel @Inject constructor(
                     fgColor = asciiGenerator.fgColor,
                     bgColor = asciiGenerator.bgColor,
                     density = asciiGenerator.density,
-                    densityArray = asciiGenerator._densityIntArray,
+                    densityArray = asciiGenerator.densityByteArray,
                     fgColorType = asciiGenerator.colorType
                 )
             )

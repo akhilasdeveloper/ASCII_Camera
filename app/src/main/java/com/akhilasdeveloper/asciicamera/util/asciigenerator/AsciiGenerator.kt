@@ -61,7 +61,6 @@ class AsciiGenerator() {
 
     private var mListener: OnGeneratedListener? = null
     private var lastTextBitmap: Bitmap? = null
-    private var lastRawBitmap: Bitmap? = null
 
     var isCapturedState = false
         private set
@@ -82,39 +81,14 @@ class AsciiGenerator() {
         this.dispatcher = dispatcher
     }
 
-    fun changeFilter(filters: AsciiFilters) {
-        textSize = filters.textCharSize
-        textSizeInt = filters.textCharSize.toInt()
-        density = filters.density
-        fgColor = filters.fgColor
-        bgColor = filters.bgColor
+    var densityByteArray: ByteArray = byteArrayOf()
 
-        colorType = when (filters) {
-            is AsciiFilters.Custom -> {
-                filters.specs.fgColorType
-            }
-            is AsciiFilters.ANSI -> {
-                AsciiFilters.COLOR_TYPE_ANSI
-            }
-            is AsciiFilters.OriginalColor -> {
-                AsciiFilters.COLOR_TYPE_ORIGINAL
-            }
-            else -> {
-                AsciiFilters.COLOR_TYPE_NONE
-            }
-        }
-
-        _densityIntArray = byteArrayOf()
-    }
-
-    var _densityIntArray: ByteArray = byteArrayOf()
-
-    private val densityByteArray: ByteArray
+    private val _densityByteArray: ByteArray
         get() {
-            if (_densityIntArray.isEmpty())
-                _densityIntArray = generateDensityBytes()
+            if (densityByteArray.isEmpty())
+                densityByteArray = generateDensityBytes()
 
-            return _densityIntArray
+            return densityByteArray
         }
 
     private fun setWidthAndHeight(width: Int, height: Int) {
@@ -201,7 +175,7 @@ class AsciiGenerator() {
                     avgBitmapWidth,
                     avgBitmapHeight,
                     textSizeInt,
-                    densityByteArray,
+                    this@AsciiGenerator._densityByteArray,
                     resultArray,
                     resWidth,
                     bgColor
@@ -227,7 +201,7 @@ class AsciiGenerator() {
                     avgBitmapWidth,
                     avgBitmapHeight,
                     textSizeInt,
-                    densityByteArray,
+                    this@AsciiGenerator._densityByteArray,
                     resultArray,
                     resWidth,
                     bgColor
