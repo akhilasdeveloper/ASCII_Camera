@@ -29,6 +29,7 @@ class FilterGenerator
                     fgColor = it.fgColor,
                     bgColor = it.bgColor,
                     fgColorType = it.fgColorType,
+                    name = it.name,
                     densityArray = utilities.generateDensityArray(it.density, it.textCharSize)
                 )
             })

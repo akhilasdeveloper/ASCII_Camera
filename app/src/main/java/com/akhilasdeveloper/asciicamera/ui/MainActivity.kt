@@ -14,6 +14,7 @@ import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.GridLayout
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,18 +27,18 @@ import androidx.core.content.ContextCompat
 import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.akhilasdeveloper.asciicamera.R
 import com.akhilasdeveloper.asciicamera.databinding.ActivityMainBinding
 import com.akhilasdeveloper.asciicamera.databinding.LayoutDensityEditorBinding
+import com.akhilasdeveloper.asciicamera.databinding.LayoutTextInputBinding
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.CustomFiltersRecyclerAdapter
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerCustomFiltersClickListener
-import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerFiltersClickListener
 import com.akhilasdeveloper.asciicamera.util.*
 import com.akhilasdeveloper.asciicamera.util.Constants.BITMAP_PATH
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters.Companion.FilterSpecs
-import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiGenerator
 import com.flask.colorpicker.ColorPickerView
 import com.flask.colorpicker.builder.ColorPickerDialogBuilder
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -139,7 +140,7 @@ class MainActivity : AppCompatActivity(),
         }
 
 
-        viewModel.currentFilterIdState.observe(lifecycleScope){id->
+        viewModel.currentFilterIdState.observe(lifecycleScope) { id ->
             id?.let {
                 viewModel.getFilterById(id)
             }
@@ -199,6 +200,31 @@ class MainActivity : AppCompatActivity(),
             positiveText = "Apply",
             onApply = {
                 viewModel.onApplyDensity(charEditText)
+            },
+            onDismiss = {
+            }
+        )
+
+    }
+
+    private fun inputNamePopup() {
+        val dialogView: LayoutTextInputBinding =
+            LayoutTextInputBinding.inflate(LayoutInflater.from(this))
+        val charEditText = dialogView.charactersInput
+
+
+        basicAlertDialog(
+            view = dialogView.root,
+            title = "Enter name to save filter",
+            negativeText = "Cancel",
+            positiveText = "Apply",
+            onApply = {
+                val name = charEditText.text?.toString()
+                if (name == null || name.isEmpty()){
+                    Toast.makeText(this, "Please enter a name to save filter", Toast.LENGTH_SHORT).show()
+                }else{
+                    viewModel.saveCurrentFilter(name)
+                }
             },
             onDismiss = {
             }
@@ -295,7 +321,7 @@ class MainActivity : AppCompatActivity(),
 
             add.setOnClickListener {
                 addFilterBottomSheetBehavior.hide()
-                viewModel.saveCurrentFilter()
+                inputNamePopup()
             }
         }
 
@@ -321,10 +347,8 @@ class MainActivity : AppCompatActivity(),
         filtersBottomSheetBehavior.isGestureInsetBottomIgnored = true
         filtersBottomSheetBehavior.addBottomSheetCallback(bottomSheetCallBack)
 
-        binding.layoutFilterBottomSheet.filterItems.layoutManager = LinearLayoutManager(
-            this@MainActivity,
-            LinearLayoutManager.HORIZONTAL, false
-        )
+        binding.layoutFilterBottomSheet.filterItems.layoutManager = GridLayoutManager(
+            this@MainActivity,4)
 
     }
 

@@ -11,7 +11,7 @@ sealed class AsciiFilters {
     abstract val fgColor: Int
     abstract val bgColor: Int
     abstract val fgColorType: Int
-    var textCharSize = 10f
+    var textCharSize = 16f
 
     companion object {
         const val COLOR_TYPE_NONE = -1
@@ -21,6 +21,7 @@ sealed class AsciiFilters {
 
         data class FilterSpecs(
             var id: Long? = null,
+            var name: String = "Name",
             var density: String = Constants.DEFAULT_CUSTOM_CHARS,
             var densityArray: ByteArray = byteArrayOf(),
             var fgColor: Int = Color.WHITE,

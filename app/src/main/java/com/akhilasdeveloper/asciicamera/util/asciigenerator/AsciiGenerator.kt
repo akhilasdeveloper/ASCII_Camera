@@ -12,6 +12,7 @@ import com.akhilasdeveloper.asciicamera.util.map
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import java.nio.ByteBuffer
 
 
@@ -31,10 +32,11 @@ class AsciiGenerator() {
         }
     }
 
-    private var textSize = 10f
+    private var textSize = AsciiFilters.ANSI.textCharSize
     private var textSizeInt = textSize.toInt()
     private var pixelAvgSize = 6 //
 
+    var name = "Custom"
     var density = DEFAULT_CUSTOM_CHARS
     var fgColor = Color.WHITE
     var bgColor = Color.BLACK
@@ -207,8 +209,6 @@ class AsciiGenerator() {
                     bgColor
                 )
             }
-
-//            val rotatedArray = rotateArray(resultArray, height, width)
 
             val newBitmap = Bitmap.createBitmap(
                 resultArray,
@@ -414,22 +414,67 @@ class AsciiGenerator() {
         lastTextBitmap
     }
 
-    suspend fun imageProxyToTextBitmap(imageProxy: ImageProxy): Bitmap? = withContext(dispatcher) {
+    suspend fun imageProxyToTextBitmap(
+        imageProxy: ImageProxy,
+        flipHorizontal: Boolean = false,
+        rotate90: Boolean = false
+    ): Bitmap? = withContext(dispatcher) {
 
         if (!isCapturedState) {
 
             val planes = imageProxy.planes
             val buffer = planes[0].buffer
 
-            val outPutArray = convertByteBufferToByteArray(buffer)
+            var outPutArray = convertByteBufferToByteArray(buffer)
             imageProxy.close()
 
-            processByteArray(outPutArray, imageProxy.width, imageProxy.height)
+            var proxyWidth = imageProxy.width
+            var proxyHeight = imageProxy.height
+
+            if (flipHorizontal) {
+                val mirroredArray = ByteArray(outPutArray.size)
+                if (isNativeLibAvailable)
+                    mirrorByteArrayHorizontalNative(
+                        outPutArray,
+                        mirroredArray,
+                        proxyHeight,
+                        proxyWidth
+                    )
+                else
+                    mirrorByteArrayHorizontal(outPutArray, mirroredArray, proxyHeight, proxyWidth)
+                outPutArray = mirroredArray
+            }
+
+            if (rotate90) {
+                val rotatedArray = ByteArray(outPutArray.size)
+
+                if (isNativeLibAvailable)
+                    rotateByteArray90Native(
+                        outPutArray,
+                        rotatedArray,
+                        proxyHeight,
+                        proxyWidth
+                    )
+                else
+                    rotateByteArray90(outPutArray, rotatedArray, proxyHeight, proxyWidth)
+
+                outPutArray = rotatedArray
+
+                val temp = proxyWidth
+                proxyWidth = proxyHeight
+                proxyHeight = temp
+            }
+
+            processByteArray(outPutArray, proxyWidth, proxyHeight)
         }
         lastTextBitmap
     }
 
-    private suspend fun processByteArray(byteArray: ByteArray, byteArrayImageWidth: Int, byteArrayImageHeight: Int) {
+    private suspend fun processByteArray(
+        byteArray: ByteArray,
+        byteArrayImageWidth: Int,
+        byteArrayImageHeight: Int
+    ) {
 
         setWidthAndHeight(byteArrayImageWidth, byteArrayImageHeight)
 
@@ -451,7 +496,7 @@ class AsciiGenerator() {
     }
 
     suspend fun reProcessLastFrame() {
-        if (isCapturedState){
+        if (isCapturedState) {
             lastTextBitmap = rgbArrayToTextBitmap(croppedArray, width)
             capture()
         }
@@ -487,44 +532,62 @@ class AsciiGenerator() {
 
     }
 
-    fun rotateByteArrayImage(
-        outPutArray: ByteArray,
+    external fun rotateByteArray90Native(
+        array: ByteArray,
         rotatedArray: ByteArray,
-        width: Int,
-        height: Int
+        height: Int,
+        width: Int
+    )
+
+    private fun rotateByteArray90(
+        array: ByteArray,
+        rotatedArray: ByteArray,
+        height: Int,
+        width: Int
     ) {
-        for (x in 0 until width) {
-            for (y in 0 until height) {
 
-                val destX = width - y
-                val destY = x
-                // Calculate the source and destination indices
-                val srcIndex = (y * width + x) * 4
-                val destIndex = (destY * height + destX) * 4
+        for (index in 0 until (width * height)) {
 
+            val i = index / width
+            val j = index % width
 
-                // Copy the pixel values from the source to the destination
-                rotatedArray[destIndex] =
-                    outPutArray[srcIndex]
-                rotatedArray[destIndex + 1] = outPutArray[srcIndex + 1]
-                rotatedArray[destIndex + 2] = outPutArray[srcIndex + 2]
-                rotatedArray[destIndex + 3] = outPutArray[srcIndex + 3]
+            val rotatedIndex = (j * height + (height - i - 1)) * 4
+            val copyIndex = (i * width + j) * 4
 
-            }
+            rotatedArray[rotatedIndex] = array[copyIndex]
+            rotatedArray[rotatedIndex + 1] = array[copyIndex + 1]
+            rotatedArray[rotatedIndex + 2] = array[copyIndex + 2]
+            rotatedArray[rotatedIndex + 3] = array[copyIndex + 3]
         }
     }
 
-    fun rotateArray(array: IntArray, rows: Int, cols: Int): IntArray {
-        val result = IntArray(rows * cols)
-        for (i in 0 until rows) {
-            for (j in 0 until cols) {
-                // Compute the index of the current element in the rotated array
-                val rotatedIndex = j * rows + (rows - i - 1)
-                // Copy the element to the rotated array
-                result[rotatedIndex] = array[i * cols + j]
-            }
+    external fun mirrorByteArrayHorizontalNative(
+        array: ByteArray,
+        mirroredArray: ByteArray,
+        height: Int,
+        width: Int
+    )
+
+    private fun mirrorByteArrayHorizontal(
+        array: ByteArray,
+        mirroredArray: ByteArray,
+        height: Int,
+        width: Int
+    ) {
+
+        for (index in 0 until (width * height)) {
+
+            val i = index / width
+            val j = index % width
+
+            val mirroredIndex = (i * width + (width - j - 1)) * 4
+            val copyIndex = (i * width + j) * 4
+
+            mirroredArray[mirroredIndex] = array[copyIndex]
+            mirroredArray[mirroredIndex + 1] = array[copyIndex + 1]
+            mirroredArray[mirroredIndex + 2] = array[copyIndex + 2]
+            mirroredArray[mirroredIndex + 3] = array[copyIndex + 3]
         }
-        return result
     }
 
     private fun convertByteBufferToByteArray(buffer: ByteBuffer): ByteArray {

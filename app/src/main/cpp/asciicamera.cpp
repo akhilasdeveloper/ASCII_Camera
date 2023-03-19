@@ -206,3 +206,56 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_cropArr
     env->ReleaseByteArrayElements(cropped_array, cropped_arrayJ, 0);
     env->ReleaseByteArrayElements(out_put_array, out_put_arrayJ, 0);
 }
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_rotateByteArray90Native(
+        JNIEnv *env, jobject thiz, jbyteArray array, jbyteArray rotated_array, jint height, jint width) {
+
+    jbyte *arrayJ = env->GetByteArrayElements(array, nullptr);
+    jbyte *rotated_arrayJ = env->GetByteArrayElements(rotated_array, nullptr);
+
+    for (jint index = 0; index < width * height; index++) {
+
+        jint i = index / width;
+        jint j = index % width;
+
+        jint rotatedIndex = (j * height + (height - i - 1)) * 4;
+        jint copyIndex = (i * width + j) * 4;
+
+        rotated_arrayJ[rotatedIndex] = arrayJ[copyIndex];
+        rotated_arrayJ[rotatedIndex + 1] = arrayJ[copyIndex + 1];
+        rotated_arrayJ[rotatedIndex + 2] = arrayJ[copyIndex + 2];
+        rotated_arrayJ[rotatedIndex + 3] = arrayJ[copyIndex + 3];
+    }
+
+    env->ReleaseByteArrayElements(array, arrayJ, 0);
+    env->ReleaseByteArrayElements(rotated_array, rotated_arrayJ, 0);
+
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_mirrorByteArrayHorizontalNative(
+        JNIEnv *env, jobject thiz, jbyteArray array, jbyteArray mirrored_array, jint height, jint width) {
+
+    jbyte *arrayJ = env->GetByteArrayElements(array, nullptr);
+    jbyte *mirrored_arrayJ = env->GetByteArrayElements(mirrored_array, nullptr);
+
+    for (jint index = 0; index < width * height; index++) {
+
+        jint i = index / width;
+        jint j = index % width;
+
+        jint mirroredIndex = (i * width + (width - j - 1)) * 4;
+        jint copyIndex = (i * width + j) * 4;
+
+        mirrored_arrayJ[mirroredIndex] = arrayJ[copyIndex];
+        mirrored_arrayJ[mirroredIndex + 1] = arrayJ[copyIndex + 1];
+        mirrored_arrayJ[mirroredIndex + 2] = arrayJ[copyIndex + 2];
+        mirrored_arrayJ[mirroredIndex + 3] = arrayJ[copyIndex + 3];
+    }
+
+    env->ReleaseByteArrayElements(array, arrayJ, 0);
+    env->ReleaseByteArrayElements(mirrored_array, mirrored_arrayJ, 0);
+
+}

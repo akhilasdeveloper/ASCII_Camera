@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [FilterSpecsTable::class],
-    version = 2
+    version = 3
 )
 abstract class ASCIIDatabase : RoomDatabase() {
     abstract fun getFilterSpecsDao(): FilterSpecsDao

@@ -49,6 +49,7 @@ class CustomFiltersRecyclerAdapter(
                 asciiGenerator.density = photo.density
                 asciiGenerator.densityByteArray = photo.densityArray
                 asciiGenerator.colorType = photo.fgColorType
+                asciiGenerator.name = photo.name
 
                 scope.launch {
                     binding.filterItemImage.setImageBitmap(asciiGenerator.imageBitmapToTextBitmap(sampleBitmap))
@@ -57,6 +58,8 @@ class CustomFiltersRecyclerAdapter(
                 binding.root.setOnClickListener {
                     interaction?.onCustomItemClicked(photo)
                 }
+
+                binding.filterName.text = photo.name
 
                 binding.deleteButton.setOnClickListener {
                     interaction?.onCustomDeleteClicked(photo)

@@ -8,6 +8,7 @@ import androidx.room.PrimaryKey
 data class FilterSpecsTable(
     @PrimaryKey(autoGenerate = true)
     val id: Long? = null,
+    val name: String,
     var density: String,
     @ColumnInfo(typeAffinity = ColumnInfo.BLOB)
     var densityArray: ByteArray,

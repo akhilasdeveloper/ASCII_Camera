@@ -17,22 +17,19 @@
         tools:ignore="SmallSp"
         android:layout_margin="2dp"/>
 
-    <LinearLayout
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="2dp">
+        android:id="@+id/filterName"
+        android:textSize="12sp"/>
 
-        <ImageButton
-            android:id="@+id/delete_button"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:background="@android:color/transparent"
-            android:layout_gravity="end|center_vertical"
-            android:src="@drawable/baseline_delete_24"
-            app:tint="@color/menu_fg_color"/>
-
-    </LinearLayout>
+    <ImageButton
+        android:id="@+id/delete_button"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:background="@android:color/transparent"
+        android:src="@drawable/baseline_delete_24"
+        app:tint="@color/menu_fg_color"/>
 
 
 </LinearLayout>

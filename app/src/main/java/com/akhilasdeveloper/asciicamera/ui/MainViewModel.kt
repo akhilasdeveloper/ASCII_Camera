@@ -34,7 +34,7 @@ class MainViewModel @Inject constructor(
 ) : ViewModel() {
 
     private var capturedTextBitmap: Bitmap? = null
-    private var cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    private var cameraSelector: CameraSelector? = null
 
     init {
         asciiGenerator.setAsciiGeneratedListener(object : AsciiGenerator.OnGeneratedListener {
@@ -70,7 +70,9 @@ class MainViewModel @Inject constructor(
 
     fun startCamera() {
         viewModelScope.launch {
-            _startCameraState.emit(cameraSelector)
+            cameraSelector?.let {
+                _startCameraState.emit(it)
+            }
         }
     }
 
@@ -86,8 +88,8 @@ class MainViewModel @Inject constructor(
         processBitmap(mutableBitmap)
     }
 
-    private val _shareAsImageState = MutableStateFlow<Uri?>(null)
-    val shareAsImageState: StateFlow<Uri?> = _shareAsImageState
+    private val _shareAsImageState = MutableSharedFlow<Uri?>()
+    val shareAsImageState: SharedFlow<Uri?> = _shareAsImageState
 
     private val _populateCurrentFilterDetailsToAddFilterBottomSheetState =
         MutableStateFlow(FilterSpecs())
@@ -112,8 +114,8 @@ class MainViewModel @Inject constructor(
     private val _pauseCameraState = MutableSharedFlow<Boolean>()
     val pauseCameraState: SharedFlow<Boolean> = _pauseCameraState
 
-    private val _launchPhotoPickerState = MutableStateFlow(false)
-    val launchPhotoPickerState: StateFlow<Boolean> = _launchPhotoPickerState
+    private val _launchPhotoPickerState = MutableSharedFlow<Boolean>()
+    val launchPhotoPickerState: SharedFlow<Boolean> = _launchPhotoPickerState
 
     private val _customFiltersListState = MutableStateFlow<List<FilterSpecs>>(arrayListOf())
     val customFiltersListState: StateFlow<List<FilterSpecs>> = _customFiltersListState
@@ -139,23 +141,21 @@ class MainViewModel @Inject constructor(
             if (getFiltersCountRaw() <= 0) {
                 generateFilters(true)
             } else {
-                repository.getCurrentLens().onEach { lens ->
-                    cameraSelector = lens.toCameraSelector()
-                    startCamera()
-                }.launchIn(viewModelScope)
+                cameraSelector = repository.getCurrentLensRaw().toCameraSelector()
+                startCamera()
             }
         }
     }
 
     private fun toggleCamera() {
         viewModelScope.launch {
-            setLens(
-                if (repository.getCurrentLensRaw() == Constants.DEFAULT_FRONT_CAMERA) {
-                    CameraSelector.DEFAULT_BACK_CAMERA
-                } else {
-                    CameraSelector.DEFAULT_FRONT_CAMERA
-                }
-            )
+            cameraSelector = if (repository.getCurrentLensRaw() == Constants.DEFAULT_FRONT_CAMERA) {
+                CameraSelector.DEFAULT_BACK_CAMERA
+            } else {
+                CameraSelector.DEFAULT_FRONT_CAMERA
+            }
+            startCamera()
+            setLens(cameraSelector!!)
         }
     }
 
@@ -214,7 +214,8 @@ class MainViewModel @Inject constructor(
                     fgColor = filterSpecs.fgColor,
                     bgColor = filterSpecs.bgColor,
                     fgColorType = filterSpecs.fgColorType,
-                    densityArray = filterSpecs.densityArray
+                    densityArray = filterSpecs.densityArray,
+                    name = filterSpecs.name
                 )
             )
             validateFilterCountAndGenerate()
@@ -249,7 +250,8 @@ class MainViewModel @Inject constructor(
 
     private fun generateTextView(imageProxy: ImageProxy) {
         viewModelScope.launch {
-            val bitmap = asciiGenerator.imageProxyToTextBitmap(imageProxy)
+            val flip = cameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA
+            val bitmap = asciiGenerator.imageProxyToTextBitmap(imageProxy = imageProxy, rotate90 = true, flipHorizontal = flip)
             setBitmapToImage(bitmap)
         }
     }
@@ -260,6 +262,7 @@ class MainViewModel @Inject constructor(
         fgColor = filterSpecsTable.fgColor,
         bgColor = filterSpecsTable.bgColor,
         fgColorType = filterSpecsTable.fgColorType,
+        name = filterSpecsTable.name
     )
 
     fun asciiGeneratorCapture() {
@@ -272,7 +275,8 @@ class MainViewModel @Inject constructor(
             bgColor = filterSpecs.bgColor,
             density = filterSpecs.density,
             densityByteArray = filterSpecs.densityArray,
-            colorType = filterSpecs.fgColorType
+            colorType = filterSpecs.fgColorType,
+            name = filterSpecs.name
         )
     }
 
@@ -281,6 +285,7 @@ class MainViewModel @Inject constructor(
         bgColor: Int? = null,
         colorType: Int? = null,
         density: String? = null,
+        name: String? = null,
         densityByteArray: ByteArray? = null,
     ) {
         fgColor?.let {
@@ -297,6 +302,9 @@ class MainViewModel @Inject constructor(
         }
         densityByteArray?.let {
             asciiGenerator.densityByteArray = it
+        }
+        name?.let {
+            asciiGenerator.name = it
         }
 
         viewModelScope.launch {
@@ -358,7 +366,8 @@ class MainViewModel @Inject constructor(
                     fgColor = it.fgColor,
                     bgColor = it.bgColor,
                     fgColorType = it.fgColorType,
-                    densityArray = it.densityArray
+                    densityArray = it.densityArray,
+                    name = it.name
                 )
             }
             repository.addFilters(filters)
@@ -382,7 +391,8 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun saveCurrentFilter() {
+    fun saveCurrentFilter(name: String) {
+        setAsciiGeneratorValues(name = name)
         viewModelScope.launch {
             repository.addFilter(
                 FilterSpecsTable(
@@ -390,7 +400,8 @@ class MainViewModel @Inject constructor(
                     bgColor = asciiGenerator.bgColor,
                     density = asciiGenerator.density,
                     densityArray = asciiGenerator.densityByteArray,
-                    fgColorType = asciiGenerator.colorType
+                    fgColorType = asciiGenerator.colorType,
+                    name = asciiGenerator.name
                 )
             )
         }
