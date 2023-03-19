@@ -108,6 +108,23 @@ class MainActivity : AppCompatActivity(),
                 launchPhotoPicker()
         }
 
+        viewModel.shareMenuState.observe(lifecycleScope) {
+            if (it)
+                shareMenuPopup()
+        }
+
+        viewModel.shareAsTextState.observe(lifecycleScope) {
+            it?.let {
+                shareAsText(it)
+            }
+        }
+
+        viewModel.shareAsHtmlState.observe(lifecycleScope) {
+            it?.let {
+                shareAsHtml(it)
+            }
+        }
+
         viewModel.shareAsImageState.observe(lifecycleScope) {
             it?.let {
                 shareAsImage(it)
@@ -146,6 +163,46 @@ class MainActivity : AppCompatActivity(),
             }
         }
 
+    }
+
+    private fun shareAsHtml(it: Uri) {
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/html"
+            putExtra(Intent.EXTRA_STREAM, it)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(shareIntent, "Share"))
+    }
+
+    private fun shareAsText(it: Uri) {
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, it)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(shareIntent, "Share"))
+    }
+
+    private fun shareMenuPopup() {
+        val items = arrayOf("Share as image", "Share as text file", "Share as html file")
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Share")
+            .setItems(items){dialog, which->
+                when(which){
+                    0 -> {
+                        viewModel.shareAsImage()
+                    }
+                    1 -> {
+                        viewModel.shareAsText()
+                    }
+                    2 -> {
+                        viewModel.shareAsHtml()
+                    }
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .create().show()
     }
 
     private fun populateAddFilterBottomSheet(it: FilterSpecs) {

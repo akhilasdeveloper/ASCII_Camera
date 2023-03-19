@@ -12,7 +12,6 @@ import com.akhilasdeveloper.asciicamera.util.map
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 import java.nio.ByteBuffer
 
 
@@ -626,6 +625,85 @@ class AsciiGenerator() {
         }
 
         return argb8888Bytes
+    }
+
+    fun generateTextString(): String? {
+        if (isCapturedState) {
+            val string = StringBuilder()
+            var row = 0
+            for ((index, value) in asciiIndexArray.withIndex()) {
+                string.append(density[value])
+                val y = index / avgBitmapWidth
+                if (row != y) {
+                    string.append("\n")
+                    row = y
+                }
+            }
+            return string.toString()
+        }
+        return null
+    }
+
+    fun generateHtmlString(): String? {
+        if (isCapturedState) {
+            val mainString = StringBuilder()
+            var row = 0
+            val bgColor = rgbToHex(bgColor)
+            mainString.append(
+                "<html>" +
+                        "<head>" +
+                        "    <title>Ascii Camera Image</title>" +
+                        "</head>" +
+                        "<body style=\"background:$bgColor\">" +
+                        "    <div style=\"letter-spacing:3px;\">" +
+                        "        <pre>"
+            )
+            var lastColor = ""
+            for ((index, value) in asciiIndexArray.withIndex()) {
+
+                val color = asciiColorArray[index]
+                val hex = rgbToHex(color)
+                val currentChar = density[value]
+
+                val y = index / avgBitmapWidth
+                if (row != y) {
+                    mainString.append("\n")
+                    row = y
+                }
+
+                if (lastColor.isEmpty()){
+                    mainString.append("<span style=\"color:$hex\">")
+                    mainString.append(currentChar)
+                }
+
+                if (hex == lastColor)
+                    mainString.append(currentChar)
+                else{
+                    mainString.append("</span>")
+                    mainString.append("<span style=\"color:$hex\">")
+                    mainString.append(currentChar)
+                }
+
+                lastColor = hex
+
+            }
+            mainString.append(
+                "</span>" +
+                        "</pre>" +
+                        "</div>" +
+                        "</body>" +
+                        "</html>"
+            )
+            return mainString.toString()
+        }
+        return null
+    }
+
+    private fun rgbToHex(color: Int): String {
+        val red = Color.red(color)
+        val green = Color.green(color)
+        val blue = Color.blue(color)
+        return String.format("#%02X%02X%02X", red, green, blue)
     }
 
 }

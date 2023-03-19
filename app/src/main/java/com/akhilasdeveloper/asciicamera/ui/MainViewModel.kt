@@ -91,6 +91,15 @@ class MainViewModel @Inject constructor(
     private val _shareAsImageState = MutableSharedFlow<Uri?>()
     val shareAsImageState: SharedFlow<Uri?> = _shareAsImageState
 
+    private val _shareAsTextState = MutableSharedFlow<Uri?>()
+    val shareAsTextState: SharedFlow<Uri?> = _shareAsTextState
+
+    private val _shareAsHtmlState = MutableSharedFlow<Uri?>()
+    val shareAsHtmlState: SharedFlow<Uri?> = _shareAsHtmlState
+
+    private val _shareMenuState = MutableSharedFlow<Boolean>()
+    val shareMenuState: SharedFlow<Boolean> = _shareMenuState
+
     private val _populateCurrentFilterDetailsToAddFilterBottomSheetState =
         MutableStateFlow(FilterSpecs())
     val populateCurrentFilterDetailsToAddFilterBottomSheetState: StateFlow<FilterSpecs> =
@@ -162,11 +171,17 @@ class MainViewModel @Inject constructor(
     fun onGalleryButtonClicked() {
         viewModelScope.launch {
             if (asciiGenerator.isCapturedState) {
-                val imageUri: Uri? = utilities.toImageURI(capturedTextBitmap)
-                _shareAsImageState.emit(imageUri)
+                _shareMenuState.emit(true)
             } else {
                 launchPhotoPicker()
             }
+        }
+    }
+
+    fun shareAsImage(){
+        viewModelScope.launch {
+            val imageUri: Uri? = utilities.toImageURI(capturedTextBitmap)
+            _shareAsImageState.emit(imageUri)
         }
     }
 
@@ -411,6 +426,24 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             repository.getFilterById(id)?.let { filterSpecsTable ->
                 setAsciiGeneratorFilter(filterSpecsFromTable(filterSpecsTable))
+            }
+        }
+    }
+
+    fun shareAsText() {
+        viewModelScope.launch {
+            asciiGenerator.generateTextString()?.let {
+                val uri = utilities.stringToUri(it, "share.txt")
+                _shareAsTextState.emit(uri)
+            }
+        }
+    }
+
+    fun shareAsHtml() {
+        viewModelScope.launch {
+            asciiGenerator.generateHtmlString()?.let {
+                val uri = utilities.stringToUri(it, "share.html")
+                _shareAsHtmlState.emit(uri)
             }
         }
     }

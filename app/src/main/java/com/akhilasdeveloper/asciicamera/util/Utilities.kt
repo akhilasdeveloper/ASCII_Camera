@@ -9,8 +9,6 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.text.TextPaint
-import android.view.View
-import androidx.appcompat.app.AlertDialog
 import androidx.core.content.FileProvider
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +17,7 @@ import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+
 
 class Utilities(private val context: Context, private val textGraphicsSorter: TextGraphicsSorter) {
 
@@ -126,6 +125,25 @@ class Utilities(private val context: Context, private val textGraphicsSorter: Te
         bitmap.getAllPixelsBytes(byteArray)
 
         return byteArray
+    }
+
+    fun stringToUri(it: String, fileName: String): Uri? {
+        val cacheDir = context.cacheDir
+        val shareFile = File(cacheDir, fileName)
+
+        try {
+            FileOutputStream(shareFile).use { stream ->
+                stream.write(it.toByteArray())
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+
+        return FileProvider.getUriForFile(
+            context.applicationContext,
+            context.applicationContext.packageName.toString() + ".provider",
+            shareFile
+        )
     }
 
 }
