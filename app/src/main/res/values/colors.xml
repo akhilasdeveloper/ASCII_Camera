@@ -13,6 +13,7 @@
     <color name="menu_bg_color">#DDDDDD</color>
     <color name="menu_fg_color">#2B2B2B</color>
     <color name="separator_color">#392B2B2B</color>
+    <color name="main_bg_color">#222222</color>
     <color name="panel_bg_color">#2B2B2B</color>
     <color name="panel_fg_color">#DDDDDD</color>
     <color name="menu_btn_pressed_color">#989898</color>
