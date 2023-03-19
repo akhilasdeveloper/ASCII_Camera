@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#C59B6D</color>
-    <color name="purple_500">#A3805A</color>
-    <color name="purple_700">#755C41</color>
+    <color name="purple_200">#2CA7AC</color>
+    <color name="purple_500">#008D93</color>
+    <color name="purple_700">#006064</color>
     <color name="teal_200">#5A8EA3</color>
     <color name="teal_700">#466E7E</color>
     <color name="black">#FF000000</color>
@@ -17,6 +17,6 @@
     <color name="panel_fg_color">#DDDDDD</color>
     <color name="menu_btn_pressed_color">#989898</color>
     <color name="panel_btn_pressed_color">#1E1E1E</color>
-    <color name="capture_btn_stroke_color">#C59B6D</color>
-    <color name="capture_btn_fill_color">#A3805A</color>
+    <color name="capture_btn_stroke_color">#2CA7AC</color>
+    <color name="capture_btn_fill_color">#008D93</color>
 </resources>
