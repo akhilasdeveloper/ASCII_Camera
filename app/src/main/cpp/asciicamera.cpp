@@ -34,7 +34,10 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reduceP
     jint *ascii_index_arrayJ = env->GetIntArrayElements(ascii_index_array, nullptr);
 
     jint arraySize = pixel_avg_size * pixel_avg_size;
-    jint rowArray[avg_bitmap_width * 4];
+    const jint rowArraySize = avg_bitmap_width * 4;
+    jint rowArray[rowArraySize];
+
+    memset( rowArray, 0, rowArraySize*sizeof(int) );
 
     for (jint index = 0; index < width*height; index ++) {
         jint y = index / width;
@@ -49,6 +52,7 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reduceP
         rowArray[rowArrayCol + 3] += pixelsJ[index * 4 + 3] & 0xFF;
 
         if ((y + 1) % pixel_avg_size == 0 && (x + 1) % pixel_avg_size == 0) {
+
             jint r = rowArray[rowArrayCol] / arraySize;
             jint g = rowArray[rowArrayCol + 1] / arraySize;
             jint b = rowArray[rowArrayCol + 2] / arraySize;
