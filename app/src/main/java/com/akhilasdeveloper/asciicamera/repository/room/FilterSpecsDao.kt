@@ -8,16 +8,19 @@ interface FilterSpecsDao {
     @Query("SELECT * from filter_specs_table")
     fun getFilters(): Flow<List<FilterSpecsTable>>
 
+    @Query("SELECT * from filter_specs_table where id = :id")
+    fun getFilterById(id: Int): FilterSpecsTable?
+
     @Query("SELECT count(*) from filter_specs_table")
     fun getFiltersCount(): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun addFilter(filterSpecs:FilterSpecsTable)
+    fun addFilter(filterSpecs: FilterSpecsTable)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun addFilters(filterSpecs:List<FilterSpecsTable>)
+    fun addFilters(filterSpecs: List<FilterSpecsTable>)
 
     @Delete
-    fun deleteFilter(filterSpecs:FilterSpecsTable)
+    fun deleteFilter(filterSpecs: FilterSpecsTable)
 
 }

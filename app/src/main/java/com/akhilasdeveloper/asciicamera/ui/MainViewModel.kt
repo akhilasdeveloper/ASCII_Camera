@@ -89,7 +89,8 @@ class MainViewModel @Inject constructor(
     private val _shareAsImageState = MutableStateFlow<Uri?>(null)
     val shareAsImageState: StateFlow<Uri?> = _shareAsImageState
 
-    private val _populateCurrentFilterDetailsToAddFilterBottomSheetState = MutableStateFlow(FilterSpecs())
+    private val _populateCurrentFilterDetailsToAddFilterBottomSheetState =
+        MutableStateFlow(FilterSpecs())
     val populateCurrentFilterDetailsToAddFilterBottomSheetState: StateFlow<FilterSpecs> =
         _populateCurrentFilterDetailsToAddFilterBottomSheetState
 
@@ -98,6 +99,9 @@ class MainViewModel @Inject constructor(
 
     private val _changePanelButtonToConfirmState = MutableStateFlow(false)
     val changePanelButtonToConfirmState: StateFlow<Boolean> = _changePanelButtonToConfirmState
+
+    private val _currentFilterIdState = MutableStateFlow<Int?>(null)
+    val currentFilterIdState: StateFlow<Int?> = _currentFilterIdState
 
     private val _setBitmapToImageState = MutableStateFlow<Bitmap?>(null)
     val setBitmapToImageState: StateFlow<Bitmap?> = _setBitmapToImageState
@@ -114,18 +118,27 @@ class MainViewModel @Inject constructor(
     private val _customFiltersListState = MutableStateFlow<List<FilterSpecs>>(arrayListOf())
     val customFiltersListState: StateFlow<List<FilterSpecs>> = _customFiltersListState
 
-    private val _filtersCount = MutableStateFlow(0)
-    val filtersCount: StateFlow<Int> = _filtersCount
-
     private suspend fun setLens(lens: CameraSelector) {
         repository.setCurrentLens(lens.toCameraSelectorInt())
     }
 
+    fun setFilter(filterId: Int) {
+        viewModelScope.launch {
+            repository.setCurrentFilter(filterId)
+        }
+    }
+
+    fun getFilter() {
+        repository.getCurrentFilter().onEach { id ->
+            _currentFilterIdState.emit(id)
+        }.launchIn(viewModelScope)
+    }
+
     fun getLens() {
         viewModelScope.launch {
-            if (getFiltersCountRaw()<=0){
+            if (getFiltersCountRaw() <= 0) {
                 generateFilters(true)
-            }else{
+            } else {
                 repository.getCurrentLens().onEach { lens ->
                     cameraSelector = lens.toCameraSelector()
                     startCamera()
@@ -185,7 +198,7 @@ class MainViewModel @Inject constructor(
 
     private suspend fun getFiltersCountRaw() = repository.getFiltersCount()
 
-    private fun validateFilterCountAndGenerate(){
+    private fun validateFilterCountAndGenerate() {
         viewModelScope.launch {
             if (getFiltersCountRaw() <= 0)
                 generateFilters()
@@ -251,6 +264,16 @@ class MainViewModel @Inject constructor(
 
     fun asciiGeneratorCapture() {
         asciiGenerator.capture()
+    }
+
+    private fun setAsciiGeneratorFilter(filterSpecs: FilterSpecs) {
+        setAsciiGeneratorValues(
+            fgColor = filterSpecs.fgColor,
+            bgColor = filterSpecs.bgColor,
+            density = filterSpecs.density,
+            densityByteArray = filterSpecs.densityArray,
+            colorType = filterSpecs.fgColorType
+        )
     }
 
     fun setAsciiGeneratorValues(
@@ -326,7 +349,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private fun generateFilters(isInit:Boolean = false) {
+    private fun generateFilters(isInit: Boolean = false) {
         viewModelScope.launch {
             val filters = filterGenerator.generateFilters().map {
                 FilterSpecsTable(
@@ -338,9 +361,8 @@ class MainViewModel @Inject constructor(
                     densityArray = it.densityArray
                 )
             }
-            filters.forEach {
-                repository.addFilter(it)
-            }
+            repository.addFilters(filters)
+
             if (isInit)
                 getLens()
         }
@@ -371,6 +393,14 @@ class MainViewModel @Inject constructor(
                     fgColorType = asciiGenerator.colorType
                 )
             )
+        }
+    }
+
+    fun getFilterById(id: Int) {
+        viewModelScope.launch {
+            repository.getFilterById(id)?.let { filterSpecsTable ->
+                setAsciiGeneratorFilter(filterSpecsFromTable(filterSpecsTable))
+            }
         }
     }
 

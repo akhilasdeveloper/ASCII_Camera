@@ -13,7 +13,8 @@ data class FilterSpecsTable(
     var densityArray: ByteArray,
     var fgColor: Int,
     var fgColorType: Int,
-    var bgColor: Int) {
+    var bgColor: Int
+) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false

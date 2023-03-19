@@ -138,6 +138,13 @@ class MainActivity : AppCompatActivity(),
             populateAddFilterBottomSheet(it)
         }
 
+
+        viewModel.currentFilterIdState.observe(lifecycleScope){id->
+            id?.let {
+                viewModel.getFilterById(id)
+            }
+        }
+
     }
 
     private fun populateAddFilterBottomSheet(it: FilterSpecs) {
@@ -462,6 +469,7 @@ class MainActivity : AppCompatActivity(),
         cameraExecutor = Executors.newSingleThreadExecutor()
 
         viewModel.setAsciiGeneratorDispatcher(cameraExecutor.asCoroutineDispatcher())
+        viewModel.getFilter()
         viewModel.getLens()
 
         if (!hasFrontCamera()) {
@@ -537,13 +545,9 @@ class MainActivity : AppCompatActivity(),
     )
 
     override fun onCustomItemClicked(filterSpecs: FilterSpecs) {
-        viewModel.setAsciiGeneratorValues(
-            fgColor = filterSpecs.fgColor,
-            bgColor = filterSpecs.bgColor,
-            density = filterSpecs.density,
-            densityByteArray = filterSpecs.densityArray,
-            colorType = filterSpecs.fgColorType
-        )
+        filterSpecs.id?.let {
+            viewModel.setFilter(it.toInt())
+        }
     }
 
     override fun onCustomDeleteClicked(filterSpecs: FilterSpecs) {

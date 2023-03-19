@@ -20,6 +20,7 @@ class Repository
 ) {
 
     private val LENS_VALUE = intPreferencesKey("LENS_VALUE")
+    private val FILTER_VALUE = intPreferencesKey("FILTER_VALUE")
 
     suspend fun setCurrentLens(lens: Int) {
         dataStore.saveValueToPreferencesStore(LENS_VALUE, lens)
@@ -31,26 +32,38 @@ class Repository
     suspend fun getCurrentLensRaw() =
         dataStore.getValueFromPreferencesStore(LENS_VALUE) ?: DEFAULT_BACK_CAMERA
 
+    suspend fun setCurrentFilter(id: Int) {
+        dataStore.saveValueToPreferencesStore(FILTER_VALUE, id)
+    }
+
+    fun getCurrentFilter() =
+        dataStore.getValueAsFlowFromPreferencesStore(FILTER_VALUE)
+
+    suspend fun getCurrentFilterRaw() =
+        dataStore.getValueFromPreferencesStore(FILTER_VALUE)
+
     suspend fun addFilter(filterSpecsTable: FilterSpecsTable) {
-        withContext(Dispatchers.IO){
+        withContext(Dispatchers.IO) {
             Timber.d("Add filter data $filterSpecsTable")
             filterSpecsDao.addFilter(filterSpecsTable)
         }
     }
 
     suspend fun addFilters(filterSpecsTable: List<FilterSpecsTable>) {
-        withContext(Dispatchers.IO){
+        withContext(Dispatchers.IO) {
             filterSpecsDao.addFilters(filterSpecsTable)
         }
     }
 
     suspend fun deleteCustomFilter(filterSpecsTable: FilterSpecsTable) {
-        withContext(Dispatchers.IO){
+        withContext(Dispatchers.IO) {
             filterSpecsDao.deleteFilter(filterSpecsTable)
         }
     }
 
     fun getCustomFilters() = filterSpecsDao.getFilters().flowOn(Dispatchers.IO)
 
-    suspend fun getFiltersCount() = withContext(Dispatchers.IO){ filterSpecsDao.getFiltersCount()}
+    suspend fun getFilterById(id: Int) = withContext(Dispatchers.IO) {filterSpecsDao.getFilterById(id)}
+
+    suspend fun getFiltersCount() = withContext(Dispatchers.IO) { filterSpecsDao.getFiltersCount() }
 }
