@@ -2,9 +2,7 @@ package com.akhilasdeveloper.asciicamera.util
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Color
 import android.view.View
-import androidx.camera.core.ImageProxy
 import androidx.core.graphics.get
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -16,7 +14,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.nio.ByteBuffer
 
 internal val Context.userPreferencesDataStore: DataStore<Preferences> by preferencesDataStore(
     name = ASCII_DB_NAME
@@ -36,12 +33,6 @@ operator fun Bitmap.iterator(): Iterator<Int> {
         for (y in 0 until height)
             list.add(get(x, y))
     return list.iterator()
-}
-
-inline fun Bitmap.forEachIndexed(action: (x: Int, y: Int, pixel: Int) -> Unit): Unit {
-    for (x in 0 until width)
-        for (y in 0 until height)
-            action(x, y, get(x, y))
 }
 
 fun Bitmap.getAllPixelsBytes(byteArray: ByteArray) {
@@ -126,24 +117,6 @@ fun rotateByteArrayImage(
     }
 }
 
-fun ByteArray.getSubPixels(
-    width: Int,
-    xStart: Int,
-    yStart: Int,
-    destWidth: Int,
-    destHeight: Int
-): ByteArray {
-    val yEnd = yStart + destHeight
-    val xEnd = xStart + destWidth
-    val subArray = mutableListOf<Byte>()
-
-    for (i in yStart until yEnd) {
-        val row: ByteArray = sliceArray(i * width + xStart until i * width + xEnd)
-        subArray.addAll(row.toList())
-    }
-    return subArray.toByteArray()
-}
-
 fun generateResult(
     ascii_index_array: IntArray,
     text_bitmap_width: Int,
@@ -215,23 +188,3 @@ fun reducePixels2(
     }
 
 }
-
-fun ImageProxy.toBitmap(): Bitmap? {
-    val planes = planes
-    val buffer: ByteBuffer = planes[0].buffer
-    val pixelStride: Int = planes[0].pixelStride
-    val rowStride: Int = planes[0].rowStride
-    val rowPadding: Int = rowStride - pixelStride * width
-
-    val bitmap = Bitmap.createBitmap(
-        width + rowPadding / pixelStride,
-        height, Bitmap.Config.ARGB_8888
-    )
-
-    bitmap.copyPixelsFromBuffer(buffer)
-    return bitmap
-}
-
-fun TwoDtoOneD(x: Int, y: Int, width: Int): Int = x + width * y
-fun xFromOneD(index: Int, width: Int): Int = index % width
-fun yFromOneD(index: Int, width: Int): Int = index / width

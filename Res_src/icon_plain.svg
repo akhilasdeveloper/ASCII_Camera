@@ -7,11 +7,37 @@
    viewBox="0 0 135.46666 135.46667"
    version="1.1"
    id="svg5"
+   sodipodi:docname="icon_plain.svg"
+   inkscape:version="1.2.2 (732a01da63, 2022-12-09)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="0.74564394"
+     inkscape:cx="182.39268"
+     inkscape:cy="240.06096"
+     inkscape:window-width="1920"
+     inkscape:window-height="1017"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
   <defs
      id="defs2" />
   <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
      id="layer1">
     <text
        xml:space="preserve"
@@ -19,6 +45,7 @@
        x="51.205711"
        y="78.879311"
        id="text15380"><tspan
+         sodipodi:role="line"
          id="tspan15378"
          style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:Arial;-inkscape-font-specification:'Arial Bold';fill:#ffffff;fill-opacity:1;stroke-width:2.72989"
          x="51.205711"
@@ -30,6 +57,7 @@
        y="100.05066"
        id="text15747"
        transform="scale(1.2647291,0.79068315)"><tspan
+         sodipodi:role="line"
          id="tspan15745"
          style="stroke-width:3.76446"
          x="15.187742"
@@ -41,6 +69,7 @@
        y="-33.75848"
        id="text15765"
        transform="matrix(0,0.78138289,-1.2797823,0,0,0)"><tspan
+         sodipodi:role="line"
          id="tspan15763"
          style="stroke-width:6.09307"
          x="49.827328"
@@ -52,6 +81,7 @@
        y="-33.75848"
        id="text15769"
        transform="matrix(0,0.78138289,-1.2797823,0,0,0)"><tspan
+         sodipodi:role="line"
          id="tspan15767"
          style="stroke-width:6.09307"
          x="110.01126"
@@ -63,6 +93,7 @@
        y="-65.766876"
        id="text15783"
        transform="matrix(0,1.1579709,-0.86357956,0,0,0)"><tspan
+         sodipodi:role="line"
          id="tspan15781"
          style="stroke-width:4.11153"
          x="22.862545"
@@ -74,6 +105,7 @@
        y="100.05065"
        id="text15787"
        transform="scale(1.2647291,0.79068315)"><tspan
+         sodipodi:role="line"
          id="tspan15785"
          style="stroke-width:3.76446"
          x="79.066589"

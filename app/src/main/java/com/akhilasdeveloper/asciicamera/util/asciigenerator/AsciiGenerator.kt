@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.nio.ByteBuffer
+import kotlin.math.sqrt
 
 
 class AsciiGenerator() {
@@ -596,9 +597,21 @@ class AsciiGenerator() {
     }
 
     private fun calculateDensityIndex(pixel: Int, densityLength: Int): Int {
-        val brightness = ColorUtils.calculateLuminance(pixel)
-        val charIndex = brightness.toFloat().map(0f, 1f, 0, densityLength)
+        val brightness = pixel.brightness()
+        val charIndex = brightness.toFloat().map(0f, 255f, 0, densityLength)
         return densityLength - charIndex - 1
+    }
+
+    private fun Int.brightness(): Double {
+
+        val r = Color.red(this)
+        val g = Color.red(this)
+        val b = Color.red(this)
+
+        return sqrt(
+            r * r * .241 + g
+                    * g * .691 + b * b * .068
+        )
     }
 
     fun setAsciiGeneratedListener(eventListener: OnGeneratedListener) {

@@ -4,6 +4,7 @@
 #include <cmath>
 
 jdouble calculateLuminanceNative(jint color);
+jdouble calculateLuminanceNative2(jint color);
 
 jint mapNative(jfloat value,
                jfloat startValue,
@@ -103,10 +104,12 @@ Java_com_akhilasdeveloper_asciicamera_util_asciigenerator_AsciiGenerator_reduceP
 jint calculateDensityIndexNative(jint pixel,
                                  jint densityLength) {
 
-    jdouble brightness = calculateLuminanceNative(pixel);
-    jint charIndex = mapNative((float) brightness, 0, 1, 0, densityLength);
+    jdouble brightness = calculateLuminanceNative2(pixel);
+    jint charIndex = mapNative((float) brightness, 0, 255, 0, densityLength);
     return densityLength - charIndex - 1;
 }
+
+
 
 jint mapNative(jfloat value,
                jfloat startValue,
@@ -138,6 +141,17 @@ jdouble calculateLuminanceNative(jint color) {
     double sb = b / 255.0;
     sb = sb < 0.04045 ? sb / 12.92 : pow((sb + 0.055) / 1.055, 2.4);
     return (sr * 0.2126 + sg * 0.7152 + sb * 0.0722);
+}
+
+jdouble calculateLuminanceNative2(jint color){
+    jint r = (color >> 16) & 0xff;
+    jint g = (color >> 8) & 0xff;
+    jint b = color & 0xff;
+
+    return sqrt(
+            r * r * .241 + g
+                           * g * .691 + b * b * .068
+    );
 }
 
 extern "C"
