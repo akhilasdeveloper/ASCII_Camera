@@ -13,6 +13,7 @@
         <item name="android:statusBarColor">@color/black</item>
         <!-- Customize your theme here. -->
         <item name="android:windowBackground">@drawable/splash</item>
+        <item name="fontFamily">@font/alatsi</item>
     </style>
 
 </resources>

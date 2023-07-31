@@ -1,35 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="72dp"
     android:layout_height="wrap_content"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:orientation="vertical"
-    android:gravity="center"
     android:layout_margin="5dp"
     android:background="@color/menu_bg_color">
 
-    <ImageView
-        android:id="@+id/filterItemImage"
-        android:layout_width="64dp"
-        android:layout_height="64dp"
-        app:textSize="1sp"
-        tools:ignore="SmallSp"
-        android:layout_margin="2dp"/>
-
-    <TextView
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/filterName"
-        android:textSize="12sp"/>
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <ImageView
+            android:id="@+id/filterItemImage"
+            android:layout_width="72dp"
+            android:layout_height="72dp"/>
+
+        <TextView
+            android:layout_width="64dp"
+            android:layout_height="match_parent"
+            android:id="@+id/filterName"
+            android:textSize="12sp"
+            android:layout_margin="4dp"
+            android:gravity="center"/>
+    </LinearLayout>
 
     <ImageButton
         android:id="@+id/delete_button"
         android:layout_width="24dp"
         android:layout_height="24dp"
-        android:background="@android:color/transparent"
+        android:layout_gravity="top|end"
+        android:background="@drawable/button_bg"
         android:src="@drawable/baseline_delete_24"
-        app:tint="@color/menu_fg_color"/>
+        app:tint="@color/white"/>
 
-
-</LinearLayout>
+</androidx.cardview.widget.CardView>

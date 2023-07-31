@@ -35,6 +35,7 @@ import com.akhilasdeveloper.asciicamera.databinding.ActivityMainBinding
 import com.akhilasdeveloper.asciicamera.databinding.LayoutDensityEditorBinding
 import com.akhilasdeveloper.asciicamera.databinding.LayoutTextInputBinding
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.CustomFiltersRecyclerAdapter
+import com.akhilasdeveloper.asciicamera.ui.recyclerview.GridAutofitLayoutManager
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerCustomFiltersClickListener
 import com.akhilasdeveloper.asciicamera.util.*
 import com.akhilasdeveloper.asciicamera.util.Constants.BITMAP_PATH
@@ -369,7 +370,7 @@ class MainActivity : AppCompatActivity(),
                 addFilterBottomSheetBehavior.hide()
             }
 
-            editChars.setOnClickListener {
+            outlinedTextField.setEndIconOnClickListener {
                 viewModel.showEditDensityPopup(charactersInput.text.toString())
             }
 
@@ -417,7 +418,7 @@ class MainActivity : AppCompatActivity(),
         filtersBottomSheetBehavior.isGestureInsetBottomIgnored = true
         filtersBottomSheetBehavior.addBottomSheetCallback(bottomSheetCallBack)
 
-        binding.layoutFilterBottomSheet.filterItems.layoutManager = GridLayoutManager(
+        binding.layoutFilterBottomSheet.filterItems.layoutManager = GridAutofitLayoutManager(
             this@MainActivity,4)
 
     }

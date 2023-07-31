@@ -15,13 +15,13 @@
         android:gravity="center">
 
         <TextView
+            android:id="@+id/filter"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:id="@+id/filter"
-            android:text="@string/filters"
             android:layout_weight="1"
-            android:textSize="16sp"
-            android:textColor="@color/menu_fg_color"/>
+            android:text="@string/filters"
+            android:textColor="@color/menu_fg_color"
+            android:textSize="16sp" />
 
         <Button
             android:layout_width="wrap_content"
@@ -40,8 +40,6 @@
             app:tint="@color/menu_fg_color"/>
 
     </LinearLayout>
-
-    <include layout="@layout/separator"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/filterItems"

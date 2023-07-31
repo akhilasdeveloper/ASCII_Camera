@@ -1,6 +1,7 @@
 package com.akhilasdeveloper.asciicamera.ui.recyclerview
 
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.*
@@ -17,6 +18,8 @@ class CustomFiltersRecyclerAdapter(
     ) :
         RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
+    var selectedPosition = -1
+    var lastSelectedPosition = -1
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val bindingPhoto = CustomFilterListItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
             return PhotoViewHolder(bindingPhoto, interaction, sampleBitmap, scope)
@@ -29,11 +32,23 @@ class CustomFiltersRecyclerAdapter(
             currentItem?.let {
                 photoItemViewHolder.bindPhoto(currentItem, position)
             }
+
+            holder.binding.root.setOnClickListener { v ->
+                lastSelectedPosition = selectedPosition
+                selectedPosition = holder.adapterPosition
+                notifyItemChanged(lastSelectedPosition)
+                notifyItemChanged(selectedPosition)
+            }
+            if (selectedPosition == holder.adapterPosition) {
+                holder.binding.root.setCardBackgroundColor(Color.LTGRAY)
+            } else {
+                holder.binding.root.setCardBackgroundColor(Color.WHITE)
+            }
         }
 
 
         class PhotoViewHolder(
-            private val binding: CustomFilterListItemBinding,
+            val binding: CustomFilterListItemBinding,
             private val interaction: RecyclerCustomFiltersClickListener?,
             private val sampleBitmap: Bitmap,
             private val scope: CoroutineScope
