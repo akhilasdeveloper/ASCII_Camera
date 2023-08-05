@@ -16,4 +16,6 @@
     <string name="edit">Edit</string>
     <string name="enter_name">Enter Name</string>
     <string name="density">Characters</string>
+    <string name="save">Save</string>
+    <string name="edit_create">Edit / Create</string>
 </resources>

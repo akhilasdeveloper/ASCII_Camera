@@ -8,10 +8,11 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
+    <color name="selection_fg_color">#ffffff</color>
     <color name="can_bg_color">#000000</color>
     <color name="can_fg_color">#ffffff</color>
     <color name="menu_bg_color">#2B2B2B</color>
-    <color name="menu_fg_color">#DDDDDD</color>
+    <color name="menu_fg_color">#ffffff</color>
     <color name="separator_color">#39DDDDDD</color>
     <color name="main_bg_color">#222222</color>
     <color name="panel_bg_color">#2B2B2B</color>

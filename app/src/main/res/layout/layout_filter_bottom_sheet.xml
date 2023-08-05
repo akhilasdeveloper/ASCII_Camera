@@ -21,21 +21,43 @@
             android:layout_weight="1"
             android:text="@string/filters"
             android:textColor="@color/menu_fg_color"
-            android:textSize="16sp" />
+            android:textSize="18sp" />
 
-        <Button
+        <ImageButton
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/edit"
+            android:text="Create"
             android:id="@+id/addCustomFilter"
-            android:layout_marginEnd="10dp"/>
+            android:src="@drawable/baseline_edit_24"
+            android:layout_marginEnd="10dp"
+            android:padding="5dp"
+            android:background="@android:color/transparent"
+            app:tint="@color/menu_fg_color"/>
+
+        <ImageButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Download"
+            android:id="@+id/downloadFilter"
+            android:src="@drawable/round_download_24"
+            android:layout_marginEnd="10dp"
+            android:padding="5dp"
+            android:background="@android:color/transparent"
+            app:tint="@color/menu_fg_color"/>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="24dp"
+            android:layout_marginEnd="10dp"
+            android:background="@color/separator_color"/>
 
         <ImageButton
             android:id="@+id/closeFilterSheet"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:background="@android:color/transparent"
             android:layout_gravity="end|center_vertical"
+            android:padding="5dp"
             android:src="@drawable/round_close_24"
             app:tint="@color/menu_fg_color"/>
 

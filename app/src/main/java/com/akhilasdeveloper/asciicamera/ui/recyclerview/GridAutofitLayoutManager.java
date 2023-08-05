@@ -7,6 +7,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import timber.log.Timber;
+
 public class GridAutofitLayoutManager extends GridLayoutManager
 {
     private int columnWidth;
@@ -66,6 +68,10 @@ public class GridAutofitLayoutManager extends GridLayoutManager
         }
         lastWidth = width;
         lastHeight = height;
-        super.onLayoutChildren(recycler, state);
+        try {
+            super.onLayoutChildren(recycler, state);
+        } catch (IndexOutOfBoundsException e) {
+            Timber.e("Error recycler adapter");
+        }
     }
 }

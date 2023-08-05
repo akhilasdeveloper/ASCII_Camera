@@ -23,4 +23,12 @@ interface FilterSpecsDao {
     @Delete
     fun deleteFilter(filterSpecs: FilterSpecsTable)
 
+    @Query("SELECT * from filter_specs_downloads_table")
+    fun getDownloadedFilters(): Flow<List<FilterSpecsDownloadsTable>>
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun addFilterDownloads(filterSpecs: FilterSpecsDownloadsTable)
+
+    @Query("DELETE from filter_specs_downloads_table")
+    fun deleteAllDownloads(): Int
+
 }

@@ -24,6 +24,7 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.isVisible
 import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.ViewModelProvider
@@ -105,6 +106,10 @@ class MainActivity : AppCompatActivity(),
             customFiltersRecyclerAdapter.submitList(it)
         }
 
+        viewModel.downloadsFiltersListState.observe(lifecycleScope) {
+            customFiltersRecyclerAdapter.submitList(it)
+        }
+
         viewModel.launchPhotoPickerState.observe(lifecycleScope) {
             if (it)
                 launchPhotoPicker()
@@ -162,6 +167,7 @@ class MainActivity : AppCompatActivity(),
         viewModel.currentFilterIdState.observe(lifecycleScope) { id ->
             id?.let {
                 viewModel.getFilterById(id)
+                customFiltersRecyclerAdapter.selectedID = id.toLong()
             }
         }
 
@@ -219,19 +225,19 @@ class MainActivity : AppCompatActivity(),
             this.radioGroup.check(
                 when (it.fgColorType) {
                     AsciiFilters.COLOR_TYPE_NONE -> {
-                        this.fgColorDisp.visibility = View.VISIBLE
+                        this.fgColorContainer.visibility = View.VISIBLE
                         R.id.radio_button_none
                     }
                     AsciiFilters.COLOR_TYPE_ANSI -> {
-                        this.fgColorDisp.visibility = View.INVISIBLE
+                        this.fgColorContainer.visibility = View.INVISIBLE
                         R.id.radio_button_ansi
                     }
                     AsciiFilters.COLOR_TYPE_ORIGINAL -> {
-                        this.fgColorDisp.visibility = View.INVISIBLE
+                        this.fgColorContainer.visibility = View.INVISIBLE
                         R.id.radio_button_org
                     }
                     else -> {
-                        this.fgColorDisp.visibility = View.VISIBLE
+                        this.fgColorContainer.visibility = View.VISIBLE
                         R.id.radio_button_none
                     }
                 }
@@ -507,24 +513,33 @@ class MainActivity : AppCompatActivity(),
         binding.layoutAddFilterBottomSheet.let {
             val fgColorType = when (it.radioGroup.checkedRadioButtonId) {
                 R.id.radio_button_none -> {
-                    it.fgColorDisp.visibility = View.VISIBLE
+                    it.fgColorContainer.visibility = View.VISIBLE
+                    callColorSelectorFg()
                     TextBitmapFilter.COLOR_TYPE_NONE
                 }
                 R.id.radio_button_ansi -> {
-                    it.fgColorDisp.visibility = View.INVISIBLE
+                    it.fgColorContainer.visibility = View.INVISIBLE
                     TextBitmapFilter.COLOR_TYPE_ANSI
                 }
                 R.id.radio_button_org -> {
-                    it.fgColorDisp.visibility = View.INVISIBLE
+                    it.fgColorContainer.visibility = View.INVISIBLE
                     TextBitmapFilter.COLOR_TYPE_ORIGINAL
                 }
                 else -> {
-                    it.fgColorDisp.visibility = View.VISIBLE
+                    it.fgColorContainer.visibility = View.VISIBLE
+                    callColorSelectorFg()
                     TextBitmapFilter.COLOR_TYPE_NONE
                 }
             }
 
             viewModel.setAsciiGeneratorValues(colorType = fgColorType)
+        }
+    }
+
+    private fun callColorSelectorFg(){
+        val view = binding.layoutAddFilterBottomSheet.fgColorDisp
+        onColorSelectButtonClicked(view) {
+            viewModel.setAsciiGeneratorValues(fgColor = it)
         }
     }
 
@@ -577,10 +592,10 @@ class MainActivity : AppCompatActivity(),
         getSampleBitmap()?.let { bitmap ->
 
             customFiltersRecyclerAdapter =
-                CustomFiltersRecyclerAdapter(this, bitmap, lifecycleScope)
+                CustomFiltersRecyclerAdapter(this, bitmap, lifecycleScope, resources)
             binding.layoutFilterBottomSheet.filterItems.adapter = customFiltersRecyclerAdapter
 
-            viewModel.getCustomFilters()
+            viewModel.getDownloadedFilters()
         }
 
     }

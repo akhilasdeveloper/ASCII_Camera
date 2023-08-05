@@ -8,6 +8,7 @@ import androidx.camera.core.ImageProxy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.akhilasdeveloper.asciicamera.repository.Repository
+import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsDownloadsTable
 import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsTable
 import com.akhilasdeveloper.asciicamera.util.Constants
 import com.akhilasdeveloper.asciicamera.util.FilterGenerator
@@ -54,6 +55,8 @@ class MainViewModel @Inject constructor(
                 Timber.d("Capture")
             }
         })
+
+        repository.getFilters()
     }
 
     private fun pauseCamera() {
@@ -144,6 +147,9 @@ class MainViewModel @Inject constructor(
     private val _customFiltersListState = MutableStateFlow<List<FilterSpecs>>(arrayListOf())
     val customFiltersListState: StateFlow<List<FilterSpecs>> = _customFiltersListState
 
+    private val _downloadsFiltersListState = MutableStateFlow<List<FilterSpecs>>(arrayListOf())
+    val downloadsFiltersListState: StateFlow<List<FilterSpecs>> = _downloadsFiltersListState
+
     private suspend fun setLens(lens: CameraSelector) {
         repository.setCurrentLens(lens.toCameraSelectorInt())
     }
@@ -228,6 +234,14 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun getDownloadedFilters() {
+        viewModelScope.launch {
+            repository.getDownloadedFilters().collect { rover ->
+                _downloadsFiltersListState.value = rover.map { filterSpecsFromDownloadsTable(it) }
+            }
+        }
+    }
+
     private suspend fun getFiltersCountRaw() = repository.getFiltersCount()
 
     private fun validateFilterCountAndGenerate() {
@@ -291,6 +305,15 @@ class MainViewModel @Inject constructor(
     }
 
     private fun filterSpecsFromTable(filterSpecsTable: FilterSpecsTable): FilterSpecs = FilterSpecs(
+        id = filterSpecsTable.id,
+        density = filterSpecsTable.density,
+        fgColor = filterSpecsTable.fgColor,
+        bgColor = filterSpecsTable.bgColor,
+        fgColorType = filterSpecsTable.fgColorType,
+        name = filterSpecsTable.name
+    )
+
+    private fun filterSpecsFromDownloadsTable(filterSpecsTable: FilterSpecsDownloadsTable): FilterSpecs = FilterSpecs(
         id = filterSpecsTable.id,
         density = filterSpecsTable.density,
         fgColor = filterSpecsTable.fgColor,

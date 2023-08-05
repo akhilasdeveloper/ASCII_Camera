@@ -52,13 +52,14 @@
             android:layout_weight="1"
             android:hint="@string/density"
             app:endIconDrawable="@drawable/baseline_edit_24"
+            app:endIconTint="@color/capture_btn_fill_color"
             app:endIconMode="custom">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/charactersInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:enabled="false"/>
+                android:enabled="false" />
 
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -97,29 +98,47 @@
                     android:id="@+id/radio_button_none"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Selected"/>
+                    android:buttonTint="@color/capture_btn_fill_color"
+                    android:text="Custom"/>
                 <RadioButton
                     android:id="@+id/radio_button_ansi"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:buttonTint="@color/capture_btn_fill_color"
                     android:text="ANSI"/>
                 <RadioButton
                     android:id="@+id/radio_button_org"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:buttonTint="@color/capture_btn_fill_color"
                     android:text="Original"/>
             </RadioGroup>
         </LinearLayout>
 
         <androidx.cardview.widget.CardView
+            android:id="@+id/fgColorContainer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="10dp">
+            app:cardCornerRadius="10dp"
+            android:layout_margin="8dp"
+            app:cardElevation="5dp">
+
             <View
                 android:id="@+id/fgColorDisp"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@color/white" />
+
+            <ImageButton
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Create"
+                android:src="@drawable/baseline_edit_24"
+                android:padding="5dp"
+                android:background="@android:color/transparent"
+                app:tint="#666"
+                android:clickable="false"
+                android:layout_gravity="center"/>
 
         </androidx.cardview.widget.CardView>
 
@@ -146,12 +165,24 @@
         <androidx.cardview.widget.CardView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="10dp">
+            app:cardCornerRadius="10dp"
+            android:layout_margin="8dp"
+            app:cardElevation="5dp">
             <View
                 android:id="@+id/bgColorDisp"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@color/black" />
+            <ImageButton
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Create"
+                android:src="@drawable/baseline_edit_24"
+                android:padding="5dp"
+                android:background="@android:color/transparent"
+                app:tint="#666"
+                android:layout_gravity="center"
+                android:clickable="false"/>
         </androidx.cardview.widget.CardView>
 
 
@@ -164,6 +195,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="10dp"
-        android:text="@string/add" />
+        android:text="@string/save" />
 
 </LinearLayout>
