@@ -1,15 +1,12 @@
 package com.akhilasdeveloper.asciicamera.repository
 
 import android.graphics.Color
-import android.widget.Toast
 import androidx.datastore.preferences.core.intPreferencesKey
 import com.akhilasdeveloper.asciicamera.repository.data.FilterDownloadDao
 import com.akhilasdeveloper.asciicamera.repository.datastore.DataStoreFunctions
 import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsDao
-import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsDownloadsTable
 import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsTable
 import com.akhilasdeveloper.asciicamera.util.Constants.DEFAULT_BACK_CAMERA
-import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiGenerator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow

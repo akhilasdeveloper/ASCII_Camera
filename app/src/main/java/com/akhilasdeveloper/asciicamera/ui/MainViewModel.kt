@@ -10,7 +10,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.akhilasdeveloper.asciicamera.repository.Repository
 import com.akhilasdeveloper.asciicamera.repository.data.FilterDownloadDao
-import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsDownloadsTable
 import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsTable
 import com.akhilasdeveloper.asciicamera.util.Constants
 import com.akhilasdeveloper.asciicamera.util.FilterGenerator

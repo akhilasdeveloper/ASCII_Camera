@@ -1,6 +1,8 @@
 package com.akhilasdeveloper.asciicamera.ui
 
 import android.Manifest
+import android.R.attr.mimeType
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -40,7 +42,6 @@ import com.akhilasdeveloper.asciicamera.ui.recyclerview.GridAutofitLayoutManager
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerCustomFiltersClickListener
 import com.akhilasdeveloper.asciicamera.util.*
 import com.akhilasdeveloper.asciicamera.util.Constants.BITMAP_PATH
-import com.akhilasdeveloper.asciicamera.util.Constants.PICK_ASC_FILE
 import com.akhilasdeveloper.asciicamera.util.Constants.VIEW_TYPE_CUSTOM
 import com.akhilasdeveloper.asciicamera.util.Constants.VIEW_TYPE_DOWNLOADED
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters
@@ -362,7 +363,7 @@ class MainActivity : AppCompatActivity(),
         binding.infoButton.setOnClickListener {
             android.app.AlertDialog.Builder(this)
                 .setTitle("About")
-                .setMessage("Developer Contact: akhilasdeveloper@gmail.com")
+                .setMessage("Developer Contact: \nakhilasdeveloper@gmail.com")
                 .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
                 .create().show()
         }
@@ -410,6 +411,10 @@ class MainActivity : AppCompatActivity(),
                 onRadioButtonSelected()
             }
 
+            radioButtonNone.setOnClickListener {
+                callColorSelectorFg()
+            }
+
             add.setOnClickListener {
                 addFilterBottomSheetBehavior.hide()
                 inputNamePopup()
@@ -455,11 +460,18 @@ class MainActivity : AppCompatActivity(),
     private fun manageFileAssociation() {
 
 
-        if (intent.action == Intent.ACTION_VIEW) {
-            val fileUri: Uri? = intent.data
+        if (intent.action == Intent.ACTION_VIEW || intent.action == Intent.ACTION_SEND) {
+            val fileUri: Uri? = intent.data ?: intent.getParcelableExtra(Intent.EXTRA_STREAM)
             fileUri?.let { uri ->
+
+                val cr: ContentResolver = this.contentResolver
+                val mimeType = cr.getType(uri)
+
                 try {
-                    importFilter(uri, true)
+                    if (mimeType?.contains("image") == true)
+                        viewModel.convertImageFromGallery(uri)
+                    else
+                        importFilter(uri, true)
                 } catch (e: java.lang.Exception) {
                     Timber.e(e)
                     Toast.makeText(
@@ -547,6 +559,13 @@ class MainActivity : AppCompatActivity(),
                 putExtra(DocumentsContract.EXTRA_INITIAL_URI, pickerInitialUri)
             }
         }
+
+        Toast.makeText(
+            this@MainActivity,
+            "Select .asc file",
+            Toast.LENGTH_SHORT
+        ).show()
+
         requestFile.launch(intent)
     }
 
@@ -635,7 +654,6 @@ class MainActivity : AppCompatActivity(),
             val fgColorType = when (it.radioGroup.checkedRadioButtonId) {
                 R.id.radio_button_none -> {
                     it.fgColorContainer.visibility = View.VISIBLE
-                    callColorSelectorFg()
                     TextBitmapFilter.COLOR_TYPE_NONE
                 }
                 R.id.radio_button_ansi -> {
@@ -648,7 +666,6 @@ class MainActivity : AppCompatActivity(),
                 }
                 else -> {
                     it.fgColorContainer.visibility = View.VISIBLE
-                    callColorSelectorFg()
                     TextBitmapFilter.COLOR_TYPE_NONE
                 }
             }
