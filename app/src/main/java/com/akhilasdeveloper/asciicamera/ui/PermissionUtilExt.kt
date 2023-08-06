@@ -22,10 +22,10 @@ internal fun MainActivity.checkPermission(
             permission
         ) == PackageManager.PERMISSION_GRANTED
     ) {
-        Timber.e("Camera permission true")
+        Timber.e("permission true")
         onResults?.invoke(true)
     } else {
-        Timber.e("Camera permission false")
+        Timber.e("permission false")
         checkPermissionRational(permission)
     }
 }

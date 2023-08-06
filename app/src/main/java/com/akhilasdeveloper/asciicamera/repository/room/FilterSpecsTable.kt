@@ -14,7 +14,8 @@ data class FilterSpecsTable(
     var densityArray: ByteArray,
     var fgColor: Int,
     var fgColorType: Int,
-    var bgColor: Int
+    var bgColor: Int,
+    var isDownloaded: Boolean = false
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

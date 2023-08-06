@@ -1,6 +1,7 @@
 package com.akhilasdeveloper.asciicamera.ui
 
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.net.Uri
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -8,6 +9,7 @@ import androidx.camera.core.ImageProxy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.akhilasdeveloper.asciicamera.repository.Repository
+import com.akhilasdeveloper.asciicamera.repository.data.FilterDownloadDao
 import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsDownloadsTable
 import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsTable
 import com.akhilasdeveloper.asciicamera.util.Constants
@@ -237,7 +239,7 @@ class MainViewModel @Inject constructor(
     fun getDownloadedFilters() {
         viewModelScope.launch {
             repository.getDownloadedFilters().collect { rover ->
-                _downloadsFiltersListState.value = rover.map { filterSpecsFromDownloadsTable(it) }
+                _downloadsFiltersListState.value = rover.map { filterSpecsFromTable(it) }
             }
         }
     }
@@ -305,15 +307,6 @@ class MainViewModel @Inject constructor(
     }
 
     private fun filterSpecsFromTable(filterSpecsTable: FilterSpecsTable): FilterSpecs = FilterSpecs(
-        id = filterSpecsTable.id,
-        density = filterSpecsTable.density,
-        fgColor = filterSpecsTable.fgColor,
-        bgColor = filterSpecsTable.bgColor,
-        fgColorType = filterSpecsTable.fgColorType,
-        name = filterSpecsTable.name
-    )
-
-    private fun filterSpecsFromDownloadsTable(filterSpecsTable: FilterSpecsDownloadsTable): FilterSpecs = FilterSpecs(
         id = filterSpecsTable.id,
         density = filterSpecsTable.density,
         fgColor = filterSpecsTable.fgColor,
@@ -468,6 +461,18 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun importFilter(data: FilterDownloadDao) {
+        setAsciiGeneratorValues(
+            fgColor = Color.parseColor(data.fgColor),
+            bgColor = Color.parseColor(data.bgColor),
+            density = data.density,
+            densityByteArray = byteArrayOf(),
+            colorType = data.fgColorType,
+        )
+
+        saveCurrentFilter(data.name)
+    }
+
     fun getFilterById(id: Int) {
         viewModelScope.launch {
             repository.getFilterById(id)?.let { filterSpecsTable ->
@@ -476,14 +481,21 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun shareAsText() {
+
+    fun shareAsciiAsText() {
         viewModelScope.launch {
             progressStart()
             asciiGenerator.generateTextString()?.let {
-                val uri = utilities.stringToUri(it, "share.txt")
-                _shareAsTextState.emit(uri)
+                shareAsText(it, "AsciiArt.txt")
             }
             progressEnd()
+        }
+    }
+
+    fun shareAsText(data: String, name: String) {
+        viewModelScope.launch {
+            val uri = utilities.stringToUri(data, name)
+            _shareAsTextState.emit(uri)
         }
     }
 

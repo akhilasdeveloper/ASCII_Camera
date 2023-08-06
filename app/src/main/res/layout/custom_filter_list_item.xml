@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="72dp"
+    android:layout_width="96dp"
     android:layout_height="wrap_content"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_margin="5dp"
-    android:background="@color/menu_bg_color">
+    android:layout_margin="5dp">
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -13,10 +12,45 @@
         android:gravity="center"
         android:id="@+id/bg">
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:id="@+id/tools">
+
+            <ImageButton
+                android:id="@+id/delete_button"
+                android:layout_width="match_parent"
+                android:layout_height="24dp"
+                android:layout_weight="1"
+                android:layout_gravity="top|end"
+                android:background="@android:color/transparent"
+                android:src="@drawable/baseline_delete_24"
+                app:tint="@color/menu_fg_color"/>
+
+            <View
+                android:layout_width=".5dp"
+                android:layout_height="12dp"
+                android:id="@+id/seperator"
+                android:background="@color/separator_color"/>
+
+            <ImageButton
+                android:id="@+id/share_button"
+                android:layout_width="match_parent"
+                android:layout_height="24dp"
+                android:layout_weight="1"
+                android:layout_gravity="top|start"
+                android:background="@android:color/transparent"
+                android:src="@drawable/baseline_share_24"
+                app:tint="@color/menu_fg_color"/>
+
+        </LinearLayout>
+
         <ImageView
             android:id="@+id/filterItemImage"
-            android:layout_width="72dp"
-            android:layout_height="72dp"/>
+            android:layout_width="96dp"
+            android:layout_height="96dp"/>
 
         <TextView
             android:layout_width="64dp"
@@ -25,15 +59,8 @@
             android:textSize="12sp"
             android:layout_margin="4dp"
             android:gravity="center"/>
-    </LinearLayout>
 
-    <ImageButton
-        android:id="@+id/delete_button"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_gravity="top|end"
-        android:background="@drawable/button_bg"
-        android:src="@drawable/baseline_delete_24"
-        app:tint="@color/white"/>
+
+    </LinearLayout>
 
 </androidx.cardview.widget.CardView>

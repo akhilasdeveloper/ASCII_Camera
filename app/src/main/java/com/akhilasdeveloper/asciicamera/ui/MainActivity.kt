@@ -9,12 +9,13 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.inputmethod.InputMethodManager
-import android.widget.GridLayout
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,33 +25,35 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
-import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.isVisible
 import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.akhilasdeveloper.asciicamera.R
 import com.akhilasdeveloper.asciicamera.databinding.ActivityMainBinding
 import com.akhilasdeveloper.asciicamera.databinding.LayoutDensityEditorBinding
 import com.akhilasdeveloper.asciicamera.databinding.LayoutTextInputBinding
+import com.akhilasdeveloper.asciicamera.repository.data.FilterDownloadDao
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.CustomFiltersRecyclerAdapter
+import com.akhilasdeveloper.asciicamera.ui.recyclerview.DownloadsFiltersRecyclerAdapter
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.GridAutofitLayoutManager
 import com.akhilasdeveloper.asciicamera.ui.recyclerview.RecyclerCustomFiltersClickListener
 import com.akhilasdeveloper.asciicamera.util.*
 import com.akhilasdeveloper.asciicamera.util.Constants.BITMAP_PATH
+import com.akhilasdeveloper.asciicamera.util.Constants.PICK_ASC_FILE
+import com.akhilasdeveloper.asciicamera.util.Constants.VIEW_TYPE_CUSTOM
+import com.akhilasdeveloper.asciicamera.util.Constants.VIEW_TYPE_DOWNLOADED
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters
 import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiFilters.Companion.FilterSpecs
 import com.flask.colorpicker.ColorPickerView
 import com.flask.colorpicker.builder.ColorPickerDialogBuilder
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.gson.Gson
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import timber.log.Timber
-import java.io.IOException
-import java.io.InputStream
+import java.io.*
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import javax.inject.Inject
@@ -78,6 +81,7 @@ class MainActivity : AppCompatActivity(),
     private lateinit var addFilterBottomSheetBehavior: BottomSheetBehavior<NestedScrollView>
 
     lateinit var customFiltersRecyclerAdapter: CustomFiltersRecyclerAdapter
+    lateinit var downloadsFiltersRecyclerAdapter: DownloadsFiltersRecyclerAdapter
 
     private lateinit var viewModel: MainViewModel
     private var sampleBitmap: Bitmap? = null
@@ -87,6 +91,14 @@ class MainActivity : AppCompatActivity(),
     ) {
         it.data?.data?.let { imageUri ->
             viewModel.convertImageFromGallery(imageUri)
+        }
+    }
+
+    private var requestFile: ActivityResultLauncher<Intent> = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        it.data?.data?.let { imageUri ->
+            importFilter(imageUri, false)
         }
     }
 
@@ -107,7 +119,7 @@ class MainActivity : AppCompatActivity(),
         }
 
         viewModel.downloadsFiltersListState.observe(lifecycleScope) {
-            customFiltersRecyclerAdapter.submitList(it)
+            downloadsFiltersRecyclerAdapter.submitList(it)
         }
 
         viewModel.launchPhotoPickerState.observe(lifecycleScope) {
@@ -168,10 +180,11 @@ class MainActivity : AppCompatActivity(),
             id?.let {
                 viewModel.getFilterById(id)
                 customFiltersRecyclerAdapter.selectedID = id.toLong()
+                downloadsFiltersRecyclerAdapter.selectedID = id.toLong()
             }
         }
 
-        viewModel.progressState.observe(lifecycleScope){
+        viewModel.progressState.observe(lifecycleScope) {
             binding.progress.isVisible = it
         }
 
@@ -199,13 +212,13 @@ class MainActivity : AppCompatActivity(),
         val items = arrayOf("Share as image", "Share as text file", "Share as html file")
         android.app.AlertDialog.Builder(this)
             .setTitle("Share")
-            .setItems(items){dialog, which->
-                when(which){
+            .setItems(items) { dialog, which ->
+                when (which) {
                     0 -> {
                         viewModel.shareAsImage()
                     }
                     1 -> {
-                        viewModel.shareAsText()
+                        viewModel.shareAsciiAsText()
                     }
                     2 -> {
                         viewModel.shareAsHtml()
@@ -289,9 +302,10 @@ class MainActivity : AppCompatActivity(),
             positiveText = "Apply",
             onApply = {
                 val name = charEditText.text?.toString()
-                if (name == null || name.isEmpty()){
-                    Toast.makeText(this, "Please enter a name to save filter", Toast.LENGTH_SHORT).show()
-                }else{
+                if (name == null || name.isEmpty()) {
+                    Toast.makeText(this, "Please enter a name to save filter", Toast.LENGTH_SHORT)
+                        .show()
+                } else {
                     viewModel.saveCurrentFilter(name)
                 }
             },
@@ -419,14 +433,121 @@ class MainActivity : AppCompatActivity(),
                     initAddFilterSheet()
                 })
             }
+
+            importFilter.setOnClickListener {
+                openFile(null)
+            }
         }
         filtersBottomSheetBehavior = BottomSheetBehavior.from(binding.bottomSheet)
         filtersBottomSheetBehavior.isGestureInsetBottomIgnored = true
         filtersBottomSheetBehavior.addBottomSheetCallback(bottomSheetCallBack)
 
         binding.layoutFilterBottomSheet.filterItems.layoutManager = GridAutofitLayoutManager(
-            this@MainActivity,4)
+            this@MainActivity, 4
+        )
+        binding.layoutFilterBottomSheet.filterDownloadItems.layoutManager =
+            GridAutofitLayoutManager(
+                this@MainActivity, 4
+            )
 
+    }
+
+    private fun manageFileAssociation() {
+
+
+        if (intent.action == Intent.ACTION_VIEW) {
+            val fileUri: Uri? = intent.data
+            fileUri?.let { uri ->
+                try {
+                    importFilter(uri, true)
+                } catch (e: java.lang.Exception) {
+                    Timber.e(e)
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Error reading file",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    finish()
+                }
+            }
+
+            if (fileUri == null) {
+                Timber.e("Null uri")
+                Toast.makeText(
+                    this@MainActivity,
+                    "Error reading file",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
+        }
+
+    }
+
+    private fun importFilter(uri: Uri, finish: Boolean) {
+        var inputStream: InputStream? = null
+
+        try {
+            inputStream = contentResolver.openInputStream(uri)
+            val r = BufferedReader(InputStreamReader(inputStream))
+            val total: StringBuilder = StringBuilder()
+
+            var line: String?
+            while (r.readLine().also { line = it } != null) {
+                total.append(line).append("\n")
+            }
+
+            val content = total.toString()
+            val data = Gson().fromJson(content, FilterDownloadDao::class.java)
+
+            android.app.AlertDialog.Builder(this)
+                .setTitle("Import Filter")
+                .setMessage("Do you want to import \"${data.name}\" Filter?")
+                .setPositiveButton("OK") { _, _ ->
+                    viewModel.importFilter(data)
+
+                    Toast.makeText(
+                        this@MainActivity,
+                        "\"${data.name}\" Filter imported",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    if (finish)
+                        finish()
+
+                }
+                .setNegativeButton("Cancel") { dialog, _ ->
+                    dialog.dismiss()
+                    if (finish)
+                        finish()
+                }
+                .create().show()
+
+        } catch (e: java.lang.Exception) {
+            Timber.e(e)
+            Toast.makeText(
+                this@MainActivity,
+                "Error importing file",
+                Toast.LENGTH_SHORT
+            ).show()
+            if (finish)
+                finish()
+        } finally {
+            inputStream?.close()
+        }
+
+    }
+
+    private fun openFile(pickerInitialUri: Uri?) {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                putExtra(DocumentsContract.EXTRA_INITIAL_URI, pickerInitialUri)
+            }
+        }
+        requestFile.launch(intent)
     }
 
     private fun onColorSelectButtonClicked(it: View, onResult: (color: Int) -> Unit) {
@@ -536,7 +657,7 @@ class MainActivity : AppCompatActivity(),
         }
     }
 
-    private fun callColorSelectorFg(){
+    private fun callColorSelectorFg() {
         val view = binding.layoutAddFilterBottomSheet.fgColorDisp
         onColorSelectButtonClicked(view) {
             viewModel.setAsciiGeneratorValues(fgColor = it)
@@ -593,10 +714,16 @@ class MainActivity : AppCompatActivity(),
 
             customFiltersRecyclerAdapter =
                 CustomFiltersRecyclerAdapter(this, bitmap, lifecycleScope, resources)
+            downloadsFiltersRecyclerAdapter =
+                DownloadsFiltersRecyclerAdapter(this, bitmap, lifecycleScope, resources)
             binding.layoutFilterBottomSheet.filterItems.adapter = customFiltersRecyclerAdapter
+            binding.layoutFilterBottomSheet.filterDownloadItems.adapter =
+                downloadsFiltersRecyclerAdapter
 
+            viewModel.getCustomFilters()
             viewModel.getDownloadedFilters()
         }
+        manageFileAssociation()
 
     }
 
@@ -654,10 +781,15 @@ class MainActivity : AppCompatActivity(),
         PackageManager.FEATURE_CAMERA_FRONT
     )
 
-    override fun onCustomItemClicked(filterSpecs: FilterSpecs) {
+    override fun onCustomItemClicked(filterSpecs: FilterSpecs, viewType: Int) {
         filterSpecs.id?.let {
             viewModel.setFilter(it.toInt())
         }
+
+        if (viewType == VIEW_TYPE_CUSTOM)
+            downloadsFiltersRecyclerAdapter.selectedID = -1
+        if (viewType == VIEW_TYPE_DOWNLOADED)
+            customFiltersRecyclerAdapter.selectedID = -1
     }
 
     override fun onCustomDeleteClicked(filterSpecs: FilterSpecs) {
@@ -670,6 +802,22 @@ class MainActivity : AppCompatActivity(),
             .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
             .create().show()
     }
+
+    override fun onCustomShareClicked(filterSpecs: FilterSpecs) {
+        val data = FilterDownloadDao(
+            name = filterSpecs.name,
+            density = filterSpecs.density,
+            fgColor = filterSpecs.fgColor.toHex(),
+            bgColor = filterSpecs.bgColor.toHex(),
+            fgColorType = filterSpecs.fgColorType
+        )
+
+        val name = "${filterSpecs.name}.asc"
+        val dataJson = Gson().toJson(data)
+        viewModel.shareAsText(dataJson, name)
+    }
+
+    private fun Int.toHex(): String = String.format("#%06X", (0xFFFFFF and this))
 
 }
 

@@ -1,11 +1,10 @@
 package com.akhilasdeveloper.asciicamera.ui.recyclerview
 
-import android.content.res.ColorStateList
 import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.res.ResourcesCompat
 import androidx.recyclerview.widget.*
@@ -17,7 +16,7 @@ import com.akhilasdeveloper.asciicamera.util.asciigenerator.AsciiGenerator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-class CustomFiltersRecyclerAdapter(
+class DownloadsFiltersRecyclerAdapter(
     private val interaction: RecyclerCustomFiltersClickListener? = null,
     private val sampleBitmap: Bitmap,
     private val scope: CoroutineScope,
@@ -37,10 +36,12 @@ class CustomFiltersRecyclerAdapter(
         }
     private var selectedPosition = -1
     private var lastSelectedPosition = -1
-    private val selectionColor = ResourcesCompat.getColor(resources, R.color.capture_btn_fill_color,null)
-    private val selectionFgColor = ResourcesCompat.getColor(resources, R.color.selection_fg_color,null)
-    private val unSelectedColor = ResourcesCompat.getColor(resources, R.color.menu_bg_color,null)
-    private val unSelectedFgColor = ResourcesCompat.getColor(resources, R.color.menu_fg_color,null)
+    private val selectionColor =
+        ResourcesCompat.getColor(resources, R.color.capture_btn_fill_color, null)
+    private val selectionFgColor =
+        ResourcesCompat.getColor(resources, R.color.selection_fg_color, null)
+    private val unSelectedColor = ResourcesCompat.getColor(resources, R.color.menu_bg_color, null)
+    private val unSelectedFgColor = ResourcesCompat.getColor(resources, R.color.menu_fg_color, null)
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val bindingPhoto =
             CustomFilterListItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -60,20 +61,14 @@ class CustomFiltersRecyclerAdapter(
                 selectedPosition = holder.adapterPosition
                 holder.binding.root.setCardBackgroundColor(selectionColor)
                 holder.binding.filterName.setTextColor(selectionFgColor)
-                holder.binding.seperator.background = ColorDrawable(selectionFgColor)
-                holder.binding.shareButton.setColorFilter(selectionFgColor)
-                holder.binding.deleteButton.setColorFilter(selectionFgColor)
             } else {
                 holder.binding.root.setCardBackgroundColor(Color.TRANSPARENT)
                 holder.binding.root.setCardBackgroundColor(unSelectedColor)
                 holder.binding.filterName.setTextColor(unSelectedFgColor)
-                holder.binding.seperator.background = ColorDrawable(unSelectedFgColor)
-                holder.binding.shareButton.setColorFilter(unSelectedFgColor)
-                holder.binding.deleteButton.setColorFilter(unSelectedFgColor)
             }
 
             holder.binding.root.setOnClickListener { v ->
-                interaction?.onCustomItemClicked(it, Constants.VIEW_TYPE_CUSTOM)
+                interaction?.onCustomItemClicked(it, Constants.VIEW_TYPE_DOWNLOADED)
                 lastSelectedPosition = selectedPosition
                 selectedPosition = holder.adapterPosition
                 selectedID = it.id
@@ -110,13 +105,7 @@ class CustomFiltersRecyclerAdapter(
 
             binding.filterName.text = photo.name
 
-            binding.deleteButton.setOnClickListener {
-                interaction?.onCustomDeleteClicked(photo)
-            }
-
-            binding.shareButton.setOnClickListener {
-                interaction?.onCustomShareClicked(photo)
-            }
+            binding.tools.visibility = View.GONE
         }
 
     }
@@ -131,7 +120,7 @@ class CustomFiltersRecyclerAdapter(
     )
 
     internal inner class RoverRecyclerChangeCallback(
-        private val adapter: CustomFiltersRecyclerAdapter
+        private val adapter: DownloadsFiltersRecyclerAdapter
     ) : ListUpdateCallback {
 
         override fun onChanged(position: Int, count: Int, payload: Any?) {

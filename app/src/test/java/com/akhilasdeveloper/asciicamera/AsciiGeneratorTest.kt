@@ -1,5 +1,6 @@
 package com.akhilasdeveloper.asciicamera
 
+import android.graphics.Color
 import com.akhilasdeveloper.asciicamera.util.generateResult
 import com.akhilasdeveloper.asciicamera.util.getSubPixels
 import com.akhilasdeveloper.asciicamera.util.reducePixels2

@@ -122,7 +122,7 @@ class AsciiGenerator() {
      * Then it can be converted into a byte array. byte 1 representing white pixel and byte 0 representing black.
      * Using this template we can generate chars in efficient way but sacrifices char quality.
      */
-    fun generateDensityBytes(): ByteArray {
+    private fun generateDensityBytes(): ByteArray {
         val canvas = Canvas()
         val bitmap = Bitmap.createBitmap(
             textSizeInt,

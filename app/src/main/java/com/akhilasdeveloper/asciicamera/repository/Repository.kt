@@ -1,5 +1,6 @@
 package com.akhilasdeveloper.asciicamera.repository
 
+import android.graphics.Color
 import android.widget.Toast
 import androidx.datastore.preferences.core.intPreferencesKey
 import com.akhilasdeveloper.asciicamera.repository.data.FilterDownloadDao
@@ -74,7 +75,7 @@ class Repository
     }
 
     fun getCustomFilters() = filterSpecsDao.getFilters().flowOn(Dispatchers.IO)
-    fun getDownloadedFilters(): Flow<List<FilterSpecsDownloadsTable>> {
+    fun getDownloadedFilters(): Flow<List<FilterSpecsTable>> {
 
         return filterSpecsDao.getDownloadedFilters().flowOn(Dispatchers.IO)
     }
@@ -101,22 +102,20 @@ class Repository
                         filterSpecsDao.deleteAllDownloads()
 
                         val data:List<FilterDownloadDao>? = response.body()
-                        val asciiGenerator = AsciiGenerator()
 
                         data?.forEach {
 
-                            asciiGenerator.density = it.density
-
-                            val tab = FilterSpecsDownloadsTable(
-                                fgColor = it.fgColor,
-                                bgColor = it.bgColor,
+                            val tab = FilterSpecsTable(
+                                fgColor = Color.parseColor(it.fgColor),
+                                bgColor = Color.parseColor(it.bgColor),
                                 density = it.density,
-                                densityArray = asciiGenerator.generateDensityBytes(),
+                                densityArray = byteArrayOf(),
                                 fgColorType = it.fgColorType,
-                                name = it.name
+                                name = it.name,
+                                isDownloaded = true
                             )
 
-                            filterSpecsDao.addFilterDownloads(tab)
+                            filterSpecsDao.addFilter(tab)
                             Timber.d("Data : %s", it.name)
                         }
                     }
