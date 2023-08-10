@@ -14,8 +14,8 @@ android {
         applicationId "com.akhilasdeveloper.asciicamera"
         minSdk 23
         targetSdk 33
-        versionCode 3
-        versionName "2.0"
+        versionCode 4
+        versionName "2.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
@@ -28,11 +28,15 @@ android {
     buildTypes {
         release {
             minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro',
+                    'proguard-rules-retrofit2.pro',
+                    'proguard-rules-gson.pro'
         }
         debug {
             minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro',
+                    'proguard-rules-retrofit2.pro',
+                    'proguard-rules-gson.pro'
         }
     }
     compileOptions {

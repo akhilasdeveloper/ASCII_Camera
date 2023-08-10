@@ -57,7 +57,9 @@ class MainViewModel @Inject constructor(
             }
         })
 
-        repository.getFilters()
+        viewModelScope.launch {
+            repository.getFilters()
+        }
     }
 
     private fun pauseCamera() {
@@ -461,15 +463,22 @@ class MainViewModel @Inject constructor(
     }
 
     fun importFilter(data: FilterDownloadDao) {
-        setAsciiGeneratorValues(
-            fgColor = Color.parseColor(data.fgColor),
-            bgColor = Color.parseColor(data.bgColor),
-            density = data.density,
-            densityByteArray = byteArrayOf(),
-            colorType = data.fgColorType,
-        )
 
-        saveCurrentFilter(data.name)
+        try {
+            setAsciiGeneratorValues(
+                fgColor = Color.parseColor(data.fgColor),
+                bgColor = Color.parseColor(data.bgColor),
+                density = data.density,
+                densityByteArray = byteArrayOf(),
+                colorType = data.fgColorType,
+            )
+
+            saveCurrentFilter(data.name)
+        }catch (e:java.lang.Exception){
+            Timber.e("Error occurred while parsing color in import filter")
+        }
+
+
     }
 
     fun getFilterById(id: Int) {

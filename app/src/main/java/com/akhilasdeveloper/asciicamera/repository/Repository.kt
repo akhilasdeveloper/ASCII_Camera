@@ -7,6 +7,7 @@ import com.akhilasdeveloper.asciicamera.repository.datastore.DataStoreFunctions
 import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsDao
 import com.akhilasdeveloper.asciicamera.repository.room.FilterSpecsTable
 import com.akhilasdeveloper.asciicamera.util.Constants.DEFAULT_BACK_CAMERA
+import com.google.gson.GsonBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -77,51 +78,61 @@ class Repository
         return filterSpecsDao.getDownloadedFilters().flowOn(Dispatchers.IO)
     }
 
-    suspend fun getFilterById(id: Int) = withContext(Dispatchers.IO) {filterSpecsDao.getFilterById(id)}
+    suspend fun getFilterById(id: Int) =
+        withContext(Dispatchers.IO) { filterSpecsDao.getFilterById(id) }
 
     suspend fun getFiltersCount() = withContext(Dispatchers.IO) { filterSpecsDao.getFiltersCount() }
 
-    fun getFilters() {
+    suspend fun getFilters() {
+        withContext(Dispatchers.IO) {
+            val retrofit = Retrofit.Builder()
+                .baseUrl("https://akhilasdeveloper.github.io/asciicamera/")
+                .addConverterFactory(GsonConverterFactory.create(GsonBuilder().create()))
+                .build()
+            val retrofitAPI = retrofit.create(RetrofitAPI::class.java)
+            val call: Call<List<FilterDownloadDao>?>? = retrofitAPI.getCourse()
+            call?.enqueue(object : Callback<List<FilterDownloadDao>?> {
+                override fun onResponse(
+                    call: Call<List<FilterDownloadDao>?>,
+                    response: Response<List<FilterDownloadDao>?>
+                ) {
+                    if (response.isSuccessful) {
 
-        val retrofit = Retrofit.Builder()
-            .baseUrl("https://akhilasdeveloper.github.io/asciicamera/")
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-        val retrofitAPI = retrofit.create(RetrofitAPI::class.java)
-        val call: Call<List<FilterDownloadDao>?>? = retrofitAPI.getCourse()
-        call?.enqueue(object : Callback<List<FilterDownloadDao>?> {
-            override fun onResponse(
-                call: Call<List<FilterDownloadDao>?>,
-                response: Response<List<FilterDownloadDao>?>
-            ) {
-                if (response.isSuccessful) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        filterSpecsDao.deleteAllDownloads()
+                        CoroutineScope(Dispatchers.IO).launch{
+                            var data: List<FilterDownloadDao>? = null
+                            try {
+                                filterSpecsDao.deleteAllDownloads()
 
-                        val data:List<FilterDownloadDao>? = response.body()
+                                data = response.body()
 
-                        data?.forEach {
+                                data?.forEach {
 
-                            val tab = FilterSpecsTable(
-                                fgColor = Color.parseColor(it.fgColor),
-                                bgColor = Color.parseColor(it.bgColor),
-                                density = it.density,
-                                densityArray = byteArrayOf(),
-                                fgColorType = it.fgColorType,
-                                name = it.name,
-                                isDownloaded = true
-                            )
+                                    val tab = FilterSpecsTable(
+                                        fgColor = Color.parseColor(it.fgColor),
+                                        bgColor = Color.parseColor(it.bgColor),
+                                        density = it.density,
+                                        densityArray = byteArrayOf(),
+                                        fgColorType = it.fgColorType,
+                                        name = it.name,
+                                        isDownloaded = true
+                                    )
 
-                            filterSpecsDao.addFilter(tab)
-                            Timber.d("Data : %s", it.name)
+                                    filterSpecsDao.addFilter(tab)
+                                }
+                            }catch (e:java.lang.Exception){
+                                Timber.e("Error while parsing data fetched from the internet")
+                                Timber.e("Data : %s", response.body())
+                            }
+
                         }
+
                     }
                 }
-            }
 
-            override fun onFailure(call: Call<List<FilterDownloadDao>?>, t: Throwable) {
-
-            }
-        })
+                override fun onFailure(call: Call<List<FilterDownloadDao>?>, t: Throwable) {
+                    Timber.e("Error occurred while fetching data: $t")
+                }
+            })
+        }
     }
 }
